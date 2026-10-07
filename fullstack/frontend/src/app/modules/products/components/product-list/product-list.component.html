@@ -1,0 +1,95 @@
+<div class="container">
+  <h1>Mini Ecommerce - Productos</h1>
+
+  <section class="form-section">
+    <h2>{{ editingId === null ? 'Crear nuevo producto' : 'Editar producto #' + editingId }}</h2>
+
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="form-grid">
+        <label>
+          Nombre:
+          <input type="text" formControlName="name" />
+          @if (showError('name')) {
+            <small class="error">El nombre es obligatorio (máx. 255 caracteres).</small>
+          }
+        </label>
+
+        <label>
+          Descripción:
+          <input type="text" formControlName="description" />
+          @if (showError('description')) {
+            <small class="error">Máximo 255 caracteres.</small>
+          }
+        </label>
+
+        <label>
+          Precio:
+          <input type="number" min="0" step="0.01" formControlName="price" />
+          @if (showError('price')) {
+            <small class="error">El precio debe ser mayor que 0.</small>
+          }
+        </label>
+
+        <label>
+          Stock:
+          <input type="number" min="0" step="1" formControlName="stock" />
+          @if (showError('stock')) {
+            <small class="error">El stock debe ser un entero mayor o igual a 0.</small>
+          }
+        </label>
+      </div>
+
+      <button type="submit">{{ editingId === null ? 'Guardar producto' : 'Actualizar producto' }}</button>
+      @if (editingId !== null) {
+        <button type="button" class="secondary" (click)="cancelEdit()">Cancelar</button>
+      }
+    </form>
+
+    @if (actionError) {
+      <p class="error">{{ actionError }}</p>
+    }
+  </section>
+
+  <section class="list-section">
+    <h2>Lista de productos</h2>
+
+    @if (isLoading) {
+      <p>Cargando productos...</p>
+    }
+    @if (loadError) {
+      <p class="error">{{ loadError }}</p>
+    }
+
+    @if (products.length > 0) {
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (product of products; track product.id) {
+            <tr>
+              <td>{{ product.id }}</td>
+              <td>{{ product.name }}</td>
+              <td>{{ product.description }}</td>
+              <td>{{ product.price | currency:'USD' }}</td>
+              <td>{{ product.stock }}</td>
+              <td class="actions">
+                <button type="button" class="secondary" (click)="edit(product)">Editar</button>
+                <button type="button" class="danger" (click)="delete(product)">Eliminar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (!isLoading && !loadError) {
+      <p>No hay productos aún. Crea el primero usando el formulario.</p>
+    }
+  </section>
+</div>
