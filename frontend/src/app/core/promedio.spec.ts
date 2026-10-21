@@ -1,4 +1,4 @@
-import { calcularPromedio, pesoTotal, promedioGeneral } from './promedio';
+import { avanceRubrica, calcularPromedio, pesoTotal, promedioGeneral } from './promedio';
 
 describe('promedio', () => {
   it('calcula el promedio ponderado del mock-up 5.4 (30/30/40) = 4.20', () => {
@@ -41,5 +41,35 @@ describe('promedio', () => {
     expect(promedioGeneral([4.17, 4.13, 4.6])).toBe(4.3);
     expect(promedioGeneral([null, 4.0])).toBe(4);
     expect(promedioGeneral([])).toBeNull();
+  });
+});
+
+describe('rúbrica', () => {
+  const completa = [
+    { valor: 5.0, peso: 50 },
+    { valor: 4.0, peso: 30 },
+    { valor: 4.5, peso: 20 },
+  ];
+
+  it('la rúbrica del boceto (5.0/4.0/4.5 con 50/30/20) da 4.60 y avance 100', () => {
+    expect(calcularPromedio(completa)).toBe(4.6);
+    expect(avanceRubrica(completa)).toBe(100);
+  });
+
+  it('con solo la teoría calificada el promedio es 5.0 y el avance 50', () => {
+    const parcial = [
+      { valor: 5.0, peso: 50 },
+      { valor: null, peso: 30 },
+      { valor: null, peso: 20 },
+    ];
+    expect(calcularPromedio(parcial)).toBe(5);
+    expect(avanceRubrica(parcial)).toBe(50);
+  });
+
+  it('sin notas: promedio nulo y avance 0', () => {
+    const vacia = [{ valor: null, peso: 100 }];
+    expect(calcularPromedio(vacia)).toBeNull();
+    expect(avanceRubrica(vacia)).toBe(0);
+    expect(avanceRubrica([])).toBe(0);
   });
 });

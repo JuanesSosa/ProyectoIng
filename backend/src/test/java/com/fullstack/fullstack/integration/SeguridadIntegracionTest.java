@@ -13,19 +13,24 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Prueba de integración de punta a punta: arranca la aplicación completa con H2 y los datos de ejemplo,
- * inicia sesión por la API y comprueba que cada rol solo accede a lo que le corresponde (RNF-01, RNF-08).
+ * Prueba de integración de punta a punta: arranca la aplicación completa con H2 y los datos de ejemplo
+ * (Ingeniería de Software, Grupo 1, con la rúbrica del Parcial 1 calificada para Juan), inicia sesión
+ * por la API y comprueba el flujo grupo → actividades → rúbrica → notas y los permisos de cada rol.
  */
 @SpringBootTest
 class SeguridadIntegracionTest {
+
+    private static final String JSON = MediaType.APPLICATION_JSON_VALUE;
 
     @Autowired
     private WebApplicationContext context;
@@ -41,65 +46,98 @@ class SeguridadIntegracionTest {
 
     // ---------- utilidades ----------
 
-    private String loginJson(String correo, String password) {
-        return "{\"correo\":\"" + correo + "\",\"password\":\"" + password + "\"}";
-    }
-
     private String login(String correo, String password) throws Exception {
         String body = mvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson(correo, password)))
+                        .contentType(JSON)
+                        .content("{\"correo\":\"" + correo + "\",\"password\":\"" + password + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return extraer(body, "\"token\"\\s*:\\s*\"([^\"]+)\"");
+    }
+
+    private String admin() throws Exception {
+        return login("admin@gestor.com", "Admin123*");
+    }
+
+    private String docente() throws Exception {
+        return login("docente@gestor.com", "Docente123*");
+    }
+
+    private String juan() throws Exception {
+        return login("juan.perez@gestor.com", "Estudiante123*");
     }
 
     private String bearer(String token) {
         return "Bearer " + token;
     }
 
-    /** Devuelve el primer grupo de la expresión regular o falla si no hay coincidencia. */
     private String extraer(String texto, String regex) {
         Matcher matcher = Pattern.compile(regex).matcher(texto);
         assertTrue(matcher.find(), "No se encontró " + regex + " en: " + texto);
         return matcher.group(1);
     }
 
-    /** Id del objeto de una lista JSON que contiene el texto indicado (no depende del orden de los campos). */
-    private String idDe(String listaJson, String clave) {
+    /** Objeto de una lista JSON que contiene todos los textos indicados (no depende del orden de los campos). */
+    private String objetoCon(String listaJson, String... textos) {
         for (String objeto : listaJson.split("\\},\\s*\\{")) {
-            if (objeto.contains(clave)) {
-                return extraer(objeto, "\"id\"\\s*:\\s*(\\d+)");
+            boolean todos = true;
+            for (String texto : textos) {
+                todos &= objeto.replaceAll("\\s", "").contains(texto.replaceAll("\\s", ""));
+            }
+            if (todos) {
+                return objeto;
             }
         }
-        fail("No se encontró " + clave + " en: " + listaJson);
+        fail("No se encontró un objeto con " + String.join(" y ", textos) + " en: " + listaJson);
         return null;
     }
 
-    private String json(String ruta, String token) throws Exception {
+    private String leer(String ruta, String token) throws Exception {
         return mvc.perform(get(ruta).header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
+    }
+
+    /** Id del grupo de ejemplo "Ingeniería de Software - Grupo 1". */
+    private String grupoSoftware1(String token) throws Exception {
+        String lista = leer("/api/grupos", token);
+        return extraer(objetoCon(lista, "\"asignaturaCodigo\":\"ISW101\"", "\"nombre\":\"Grupo 1\""),
+                "\"id\"\\s*:\\s*(\\d+)");
+    }
+
+    private String grupoSoftware2(String token) throws Exception {
+        String lista = leer("/api/grupos", token);
+        return extraer(objetoCon(lista, "\"asignaturaCodigo\":\"ISW101\"", "\"nombre\":\"Grupo 2\""),
+                "\"id\"\\s*:\\s*(\\d+)");
+    }
+
+    private String actividadId(String grupoId, String nombre, String token) throws Exception {
+        String lista = leer("/api/grupos/" + grupoId + "/actividades", token);
+        return extraer(objetoCon(lista, "\"nombre\":\"" + nombre + "\""), "\"id\"\\s*:\\s*(\\d+)");
+    }
+
+    private String estudianteId(String grupoId, String nombre, String token) throws Exception {
+        String lista = leer("/api/grupos/" + grupoId + "/estudiantes", token);
+        return extraer(objetoCon(lista, "\"nombre\":\"" + nombre + "\""), "\"estudianteId\"\\s*:\\s*(\\d+)");
     }
 
     // ---------- login ----------
 
     @Test
     void loginCorrectoDevuelveToken() throws Exception {
-        String token = login("admin@gestor.com", "Admin123*");
-        assertTrue(token.length() > 20);
+        assertTrue(admin().length() > 20);
     }
 
     @Test
     void loginConContrasenaIncorrectaDevuelve401() throws Exception {
-        mvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson("admin@gestor.com", "incorrecta")))
+        mvc.perform(post("/api/auth/login").contentType(JSON)
+                        .content("{\"correo\":\"admin@gestor.com\",\"password\":\"incorrecta\"}"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void sinTokenLaApiDevuelve401() throws Exception {
+        mvc.perform(get("/api/grupos")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/estudiantes")).andExpect(status().isUnauthorized());
     }
 
@@ -107,106 +145,198 @@ class SeguridadIntegracionTest {
 
     @Test
     void elEstudianteNoPuedeListarEstudiantes() throws Exception {
-        String token = login("juan.perez@gestor.com", "Estudiante123*");
-
-        mvc.perform(get("/api/estudiantes").header("Authorization", bearer(token)))
+        mvc.perform(get("/api/estudiantes").header("Authorization", bearer(juan())))
                 .andExpect(status().isForbidden());
     }
 
     @Test
-    void elDocenteNoPuedeCrearEstudiantes() throws Exception {
-        String token = login("docente@gestor.com", "Docente123*");
-
-        mvc.perform(post("/api/estudiantes")
-                        .header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
+    void elDocenteNoPuedeCrearEstudiantesNiGrupos() throws Exception {
+        String token = docente();
+        mvc.perform(post("/api/estudiantes").header("Authorization", bearer(token)).contentType(JSON)
                         .content("{\"documento\":\"777\",\"nombre\":\"X\",\"curso\":\"10A\"}"))
                 .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void elAdministradorNoPuedeRegistrarNotas() throws Exception {
-        String token = login("admin@gestor.com", "Admin123*");
-
-        mvc.perform(put("/api/notas/registro")
-                        .header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+        mvc.perform(post("/api/grupos").header("Authorization", bearer(token)).contentType(JSON)
+                        .content("{\"asignaturaId\":1,\"nombre\":\"Grupo 9\",\"periodo\":\"2026-2\",\"docenteId\":1}"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void elAdministradorCreaEstudianteYUnDocumentoRepetidoDa409() throws Exception {
-        String token = login("admin@gestor.com", "Admin123*");
-        String estudiante = "{\"documento\":\"555001\",\"nombre\":\"Laura Ruiz\",\"curso\":\"11B\"}";
-
-        mvc.perform(post("/api/estudiantes")
-                        .header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(estudiante))
+        String token = admin();
+        String cuerpo = "{\"documento\":\"555111\",\"nombre\":\"Laura\",\"curso\":\"10A\"}";
+        mvc.perform(post("/api/estudiantes").header("Authorization", bearer(token)).contentType(JSON).content(cuerpo))
                 .andExpect(status().isCreated());
-
-        mvc.perform(post("/api/estudiantes")
-                        .header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(estudiante))
+        mvc.perform(post("/api/estudiantes").header("Authorization", bearer(token)).contentType(JSON).content(cuerpo))
                 .andExpect(status().isConflict());
     }
 
-    // ---------- notas ----------
+    // ---------- flujo del docente ----------
 
     @Test
-    void elDocenteRegistraNotasYSeValidaElRango() throws Exception {
-        String token = login("docente@gestor.com", "Docente123*");
-        String estudianteId = idDe(json("/api/estudiantes?q=123456", token), "123456");
-        String asignaturaId = idDe(json("/api/asignaturas", token), "MAT101");
-        String cabecera = "{\"estudianteId\":" + estudianteId + ",\"asignaturaId\":" + asignaturaId + ",\"periodo\":\"2027-1\",";
+    void elDocenteVeSusGruposYLaRubricaDelEstudiante() throws Exception {
+        String token = docente();
+        String lista = leer("/api/grupos", token);
+        assertTrue(lista.contains("Ingeniería de Software"));
+        assertTrue(lista.contains("Cálculo I"));
 
-        // Nota fuera de rango: 400
-        mvc.perform(put("/api/notas/registro")
-                        .header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(cabecera + "\"evaluaciones\":[{\"evaluacion\":\"Parcial\",\"peso\":100,\"valor\":5.5}]}"))
-                .andExpect(status().isBadRequest());
+        String grupo = grupoSoftware1(token);
+        String actividades = leer("/api/grupos/" + grupo + "/actividades", token);
+        assertTrue(actividades.contains("Parcial 1") && actividades.contains("Talleres")
+                && actividades.contains("Proyecto"));
 
-        // Pesos que suman más de 100: 400
-        mvc.perform(put("/api/notas/registro")
-                        .header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(cabecera + "\"evaluaciones\":[{\"evaluacion\":\"A\",\"peso\":70,\"valor\":4.0},"
-                                + "{\"evaluacion\":\"B\",\"peso\":50,\"valor\":4.0}]}"))
-                .andExpect(status().isBadRequest());
+        String parcial1 = actividadId(grupo, "Parcial 1", token);
+        String juanId = estudianteId(grupo, "Juan Pérez", token);
+        String rubrica = leer("/api/actividades/" + parcial1 + "/rubrica?estudianteId=" + juanId, token);
+        assertTrue(rubrica.contains("Teoría") && rubrica.contains("Sustentación"));
+        assertTrue(rubrica.contains("4.6"), "El promedio del Parcial 1 de Juan debe ser 4.60: " + rubrica);
 
-        // Registro correcto: 200 y los pesos suman 100
-        String respuesta = mvc.perform(put("/api/notas/registro")
-                        .header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(cabecera + "\"evaluaciones\":[{\"evaluacion\":\"Parcial\",\"peso\":50,\"valor\":4.0},"
-                                + "{\"evaluacion\":\"Final\",\"peso\":50,\"valor\":5.0}]}"))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        assertTrue(respuesta.contains("\"pesoTotal\":100"), "Respuesta inesperada: " + respuesta);
+        String estudiantes = leer("/api/actividades/" + parcial1 + "/estudiantes", token);
+        assertTrue(estudiantes.contains("Ana López") && estudiantes.contains("Juan Pérez"));
     }
 
     @Test
-    void elEstudianteSoloVeSusPropiasNotas() throws Exception {
-        String login = mvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginJson("juan.perez@gestor.com", "Estudiante123*")))
+    void elDocenteCalificaUnCriterioYLaNotaSeActualiza() throws Exception {
+        String token = docente();
+        String grupo = grupoSoftware1(token);
+        String parcial1 = actividadId(grupo, "Parcial 1", token);
+        String anaId = estudianteId(grupo, "Ana López", token);
+        String rubrica = leer("/api/actividades/" + parcial1 + "/rubrica?estudianteId=" + anaId, token);
+        String practica = extraer(objetoCon(rubrica, "\"nombre\":\"Práctica\""), "\"criterioId\"\\s*:\\s*(\\d+)");
+
+        // Nota fuera de rango: 400
+        mvc.perform(put("/api/actividades/" + parcial1 + "/estudiantes/" + anaId + "/calificaciones")
+                        .header("Authorization", bearer(token)).contentType(JSON)
+                        .content("{\"calificaciones\":[{\"criterioId\":" + practica + ",\"valor\":5.5}]}"))
+                .andExpect(status().isBadRequest());
+
+        // Nota válida: 200 y la rúbrica refleja la nota
+        String respuesta = mvc.perform(put("/api/actividades/" + parcial1 + "/estudiantes/" + anaId + "/calificaciones")
+                        .header("Authorization", bearer(token)).contentType(JSON)
+                        .content("{\"calificaciones\":[{\"criterioId\":" + practica + ",\"valor\":4.0}]}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        String token = extraer(login, "\"token\"\\s*:\\s*\"([^\"]+)\"");
-        long propio = Long.parseLong(extraer(login, "\"estudianteId\"\\s*:\\s*(\\d+)"));
+        assertTrue(respuesta.contains("4.0"), respuesta);
 
-        // Sin indicar estudiante: devuelve las suyas
-        String resumen = mvc.perform(get("/api/notas/resumen?periodo=2026-2").header("Authorization", bearer(token)))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        assertTrue(resumen.contains("MAT101"), "Respuesta inesperada: " + resumen);
+        // Un criterio que no es de la actividad: 400
+        mvc.perform(put("/api/actividades/" + parcial1 + "/estudiantes/" + anaId + "/calificaciones")
+                        .header("Authorization", bearer(token)).contentType(JSON)
+                        .content("{\"calificaciones\":[{\"criterioId\":999999,\"valor\":3.0}]}"))
+                .andExpect(status().isBadRequest());
+    }
 
-        // Pidiendo las de otro estudiante: 403
-        mvc.perform(get("/api/notas/resumen?periodo=2026-2&estudianteId=" + (propio + 1))
+    @Test
+    void soloElDocenteCalifica() throws Exception {
+        String token = docente();
+        String grupo = grupoSoftware1(token);
+        String parcial1 = actividadId(grupo, "Parcial 1", token);
+        String juanId = estudianteId(grupo, "Juan Pérez", token);
+        String cuerpo = "{\"calificaciones\":[{\"criterioId\":1,\"valor\":3.0}]}";
+        String ruta = "/api/actividades/" + parcial1 + "/estudiantes/" + juanId + "/calificaciones";
+
+        mvc.perform(put(ruta).header("Authorization", bearer(admin())).contentType(JSON).content(cuerpo))
+                .andExpect(status().isForbidden());
+        mvc.perform(put(ruta).header("Authorization", bearer(juan())).contentType(JSON).content(cuerpo))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void lasActividadesNoPuedenSumarMasDe100YElNombreNoSeRepite() throws Exception {
+        String token = docente();
+        String grupo2 = grupoSoftware2(token);
+        String ruta = "/api/grupos/" + grupo2 + "/actividades";
+
+        mvc.perform(post(ruta).header("Authorization", bearer(token)).contentType(JSON)
+                        .content("{\"nombre\":\"Parcial A\",\"peso\":60}"))
+                .andExpect(status().isCreated());
+        mvc.perform(post(ruta).header("Authorization", bearer(token)).contentType(JSON)
+                        .content("{\"nombre\":\"Parcial B\",\"peso\":50}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post(ruta).header("Authorization", bearer(token)).contentType(JSON)
+                        .content("{\"nombre\":\"parcial a\",\"peso\":10}"))
+                .andExpect(status().isConflict());
+    }
+
+    // ---------- el estudiante ----------
+
+    @Test
+    void elEstudianteVeSoloSusGruposYSuSeguimiento() throws Exception {
+        String token = juan();
+        String lista = leer("/api/grupos", token);
+        assertTrue(lista.contains("Ingeniería de Software"));
+        assertTrue(lista.contains("Matemáticas Discretas"));
+        assertFalse(lista.contains("Cálculo I"), "Juan no está matriculado en Cálculo I: " + lista);
+
+        String grupo = grupoSoftware1(token);
+        String resumen = leer("/api/grupos/" + grupo + "/resumen", token);
+        assertTrue(resumen.contains("4.6"), "Promedio de lo evaluado: " + resumen);
+        assertTrue(resumen.contains("1.38"), "Acumulado 4.60 x 30 %: " + resumen);
+    }
+
+    @Test
+    void elEstudianteNoVeLosDatosDeOtrosNiLosDeOtroGrupo() throws Exception {
+        String tokenDocente = docente();
+        String grupo = grupoSoftware1(tokenDocente);
+        String anaId = estudianteId(grupo, "Ana López", tokenDocente);
+        String token = juan();
+
+        mvc.perform(get("/api/grupos/" + grupo + "/resumen?estudianteId=" + anaId)
                         .header("Authorization", bearer(token)))
                 .andExpect(status().isForbidden());
+        mvc.perform(get("/api/grupos/" + grupo + "/estudiantes").header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/grupos/" + grupo + "/progreso").header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/grupos/" + grupo + "/actividades").header("Authorization", bearer(token))
+                        .contentType(JSON).content("{\"nombre\":\"Hack\",\"peso\":1}"))
+                .andExpect(status().isForbidden());
+
+        // Pedro está en el Grupo 2 de Ingeniería de Software: Juan no puede entrar
+        String grupo2 = grupoSoftware2(tokenDocente);
+        mvc.perform(get("/api/grupos/" + grupo2 + "/actividades").header("Authorization", bearer(token)))
+                .andExpect(status().isForbidden());
+    }
+
+    // ---------- el administrador: grupos y matrículas ----------
+
+    @Test
+    void elAdministradorCreaGrupoYMatriculaSinRepetirEstudiantes() throws Exception {
+        String token = admin();
+        String asignaturas = leer("/api/asignaturas", token);
+        String asignatura = extraer(objetoCon(asignaturas, "\"codigo\":\"CAL101\""), "\"id\"\\s*:\\s*(\\d+)");
+        String usuarios = leer("/api/usuarios", token);
+        String docenteId = extraer(objetoCon(usuarios, "\"correo\":\"docente@gestor.com\""), "\"id\"\\s*:\\s*(\\d+)");
+        String estudiantes = leer("/api/estudiantes", token);
+        String pedro = extraer(objetoCon(estudiantes, "\"nombre\":\"Pedro Gómez\""), "\"id\"\\s*:\\s*(\\d+)");
+
+        String cuerpo = "{\"asignaturaId\":" + asignatura + ",\"nombre\":\"Grupo 7\",\"periodo\":\"2027-1\",\"docenteId\":"
+                + docenteId + "}";
+        String creado = mvc.perform(post("/api/grupos").header("Authorization", bearer(token)).contentType(JSON)
+                        .content(cuerpo))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String grupoId = extraer(creado, "\"id\"\\s*:\\s*(\\d+)");
+
+        mvc.perform(post("/api/grupos").header("Authorization", bearer(token)).contentType(JSON).content(cuerpo))
+                .andExpect(status().isConflict());
+
+        mvc.perform(post("/api/grupos/" + grupoId + "/estudiantes/" + pedro).header("Authorization", bearer(token)))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/grupos/" + grupoId + "/estudiantes/" + pedro).header("Authorization", bearer(token)))
+                .andExpect(status().isConflict());
+
+        // Con estudiantes matriculados el grupo no se puede eliminar; vacío sí
+        mvc.perform(delete("/api/grupos/" + grupoId).header("Authorization", bearer(token)))
+                .andExpect(status().isConflict());
+        mvc.perform(delete("/api/grupos/" + grupoId + "/estudiantes/" + pedro).header("Authorization", bearer(token)))
+                .andExpect(status().isNoContent());
+        mvc.perform(delete("/api/grupos/" + grupoId).header("Authorization", bearer(token)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void elPanelSoloLoVenAdminYDocente() throws Exception {
+        mvc.perform(get("/api/panel").header("Authorization", bearer(admin()))).andExpect(status().isOk());
+        mvc.perform(get("/api/panel").header("Authorization", bearer(docente()))).andExpect(status().isOk());
+        mvc.perform(get("/api/panel").header("Authorization", bearer(juan()))).andExpect(status().isForbidden());
     }
 }

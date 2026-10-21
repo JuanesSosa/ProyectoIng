@@ -46,55 +46,96 @@ export interface Asignatura {
   activa?: boolean;
 }
 
-/** Una evaluación del registro: "Parcial", 30 (%), 4.2. */
-export interface Evaluacion {
-  evaluacion: string;
-  peso: number | null;
-  valor: number;
-}
-
-export interface Nota extends Evaluacion {
-  id: number;
-  estudianteId: number;
+export interface Grupo {
+  id?: number;
   asignaturaId: number;
-  periodo: string;
-}
-
-export interface RegistroNotasRequest {
-  estudianteId: number;
-  asignaturaId: number;
-  periodo: string;
-  evaluaciones: Evaluacion[];
-}
-
-export interface RegistroNotasResponse {
-  estudianteId: number;
-  asignaturaId: number;
-  periodo: string;
-  notas: Nota[];
-  promedio: number | null;
-  pesoTotal: number;
-}
-
-export interface AsignaturaResumen {
-  asignaturaId: number;
-  codigo: string;
+  asignaturaCodigo?: string;
+  asignaturaNombre?: string;
   nombre: string;
-  notas: Nota[];
-  promedio: number | null;
-  pesoTotal: number;
+  periodo: string;
+  docenteId: number;
+  docenteNombre?: string;
+  estudiantes?: number;
 }
 
-export interface ResumenNotas {
+export interface Matriculado {
+  estudianteId: number;
+  documento: string;
+  nombre: string;
+  curso: string;
+}
+
+export interface Criterio {
+  id: number;
+  nombre: string;
+  peso: number;
+}
+
+export interface Actividad {
+  id: number;
+  grupoId: number;
+  nombre: string;
+  peso: number;
+  criterios: Criterio[];
+  pesoCriterios: number;
+}
+
+/** Un criterio con la nota del estudiante (valor null = sin calificar). */
+export interface CriterioNota {
+  criterioId: number;
+  nombre: string;
+  peso: number;
+  valor: number | null;
+}
+
+export interface RubricaEstudiante {
+  actividadId: number;
+  actividadNombre: string;
+  actividadPeso: number;
   estudianteId: number;
   estudianteNombre: string;
+  criterios: CriterioNota[];
+  nota: number | null;
+  avance: number;
+}
+
+export interface EstudianteActividad {
+  estudianteId: number;
+  documento: string;
+  nombre: string;
+  nota: number | null;
+  avance: number;
+}
+
+export interface ActividadResumen {
+  actividadId: number;
+  nombre: string;
+  peso: number;
+  criterios: CriterioNota[];
+  nota: number | null;
+  avance: number;
+}
+
+/** Seguimiento de un estudiante en un grupo (promedio de lo evaluado, acumulado sobre 5.0 y avance %). */
+export interface ResumenGrupo {
+  grupoId: number;
+  asignaturaId: number;
+  asignaturaNombre: string;
+  grupoNombre: string;
   periodo: string;
-  asignaturas: AsignaturaResumen[];
-  promedioGeneral: number | null;
+  estudianteId: number;
+  estudianteDocumento: string;
+  estudianteNombre: string;
+  actividades: ActividadResumen[];
+  pesoActividades: number;
+  promedio: number | null;
+  acumulado: number;
+  avance: number;
 }
 
 export interface Panel {
   estudiantes: number;
   asignaturas: number;
-  notas: number;
+  grupos: number;
+  calificaciones: number;
 }

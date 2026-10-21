@@ -4,6 +4,7 @@ import com.fullstack.fullstack.model.entity.Estudiante;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /** Acceso a datos de estudiantes. */
 public interface EstudianteRepository extends JpaRepository<Estudiante, Long> {
@@ -13,6 +14,8 @@ public interface EstudianteRepository extends JpaRepository<Estudiante, Long> {
     /** Búsqueda por nombre o documento (parcial y sin distinguir mayúsculas), HU-08. */
     List<Estudiante> findByNombreContainingIgnoreCaseOrDocumentoContainingIgnoreCaseOrderByNombreAsc(
             String nombre, String documento);
+
+    Optional<Estudiante> findByDocumento(String documento);
 
     boolean existsByDocumento(String documento);
 

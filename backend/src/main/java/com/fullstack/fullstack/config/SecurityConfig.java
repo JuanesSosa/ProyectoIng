@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * Seguridad de la API (RNF-01, RNF-08).
  * - Autenticación: token JWT en la cabecera "Authorization: Bearer ...". No hay sesiones en el servidor.
- * - Autorización: cada ruta exige un rol. Además, en NotaController un ESTUDIANTE solo ve sus propias notas.
+ * - Autorización: cada ruta exige un rol. Además, Permisos limita a cada persona a sus grupos y a un ESTUDIANTE a sus propias notas.
  * - CORS: solo se permite el origen del frontend Angular.
  */
 @Configuration
@@ -55,10 +55,19 @@ public class SecurityConfig {
                         .requestMatchers("/api/estudiantes/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/asignaturas/**").hasAnyRole("ADMIN", "DOCENTE")
                         .requestMatchers("/api/asignaturas/**").hasRole("ADMIN")
-                        // Notas: solo el docente registra o modifica (HU-04, HU-05); consultar = cualquier usuario
-                        // autenticado (el controlador limita al estudiante a sus propias notas)
-                        .requestMatchers(HttpMethod.PUT, "/api/notas/registro").hasRole("DOCENTE")
-                        .requestMatchers(HttpMethod.GET, "/api/notas/**").authenticated()
+                        // Grupos, actividades y notas: consultar = cualquier usuario autenticado (Permisos decide
+                        // qué grupos ve cada uno y limita al estudiante a sus propias notas)
+                        .requestMatchers(HttpMethod.GET, "/api/grupos/**", "/api/actividades/**").authenticated()
+                        // Crear/editar/eliminar grupos y matricular estudiantes: solo ADMIN
+                        .requestMatchers(HttpMethod.POST, "/api/grupos").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/grupos/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/grupos/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/grupos/*/estudiantes/*").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/grupos/*/estudiantes/*").hasRole("ADMIN")
+                        // Actividades, rúbricas y calificaciones: solo DOCENTE (y de su propio grupo, en Permisos)
+                        .requestMatchers(HttpMethod.POST, "/api/grupos/*/actividades").hasRole("DOCENTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/actividades/**").hasRole("DOCENTE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/actividades/*").hasRole("DOCENTE")
                         // Panel con totales
                         .requestMatchers("/api/panel").hasAnyRole("ADMIN", "DOCENTE")
                         .anyRequest().authenticated()

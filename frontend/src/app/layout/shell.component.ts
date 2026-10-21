@@ -14,16 +14,21 @@ import { AuthService } from '../core/auth.service';
         <nav>
           <a routerLink="/inicio" routerLinkActive="activo">Inicio</a>
           @if (auth.tieneRol('ADMIN', 'DOCENTE')) {
+            <a routerLink="/notas" routerLinkActive="activo">{{ auth.tieneRol('DOCENTE') ? 'Calificar' : 'Notas' }}</a>
+          }
+          @if (auth.tieneRol('ESTUDIANTE')) {
+            <a routerLink="/mis-notas" routerLinkActive="activo">Mis notas</a>
+          }
+          @if (auth.tieneRol('ADMIN')) {
+            <a routerLink="/grupos" routerLinkActive="activo">Grupos</a>
+          }
+          @if (auth.tieneRol('ADMIN', 'DOCENTE')) {
             <a routerLink="/estudiantes" routerLinkActive="activo">Estudiantes</a>
             <a routerLink="/asignaturas" routerLinkActive="activo">Asignaturas</a>
           }
           @if (auth.tieneRol('ADMIN')) {
             <a routerLink="/usuarios" routerLinkActive="activo">Usuarios</a>
           }
-          @if (auth.tieneRol('DOCENTE')) {
-            <a routerLink="/notas/registro" routerLinkActive="activo">Registrar notas</a>
-          }
-          <a routerLink="/notas/consulta" routerLinkActive="activo">Consultar notas</a>
         </nav>
         <div class="usuario">
           <strong>{{ auth.sesion()?.nombre }}</strong>

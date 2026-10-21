@@ -39,15 +39,39 @@ export const routes: Routes = [
           import('./pages/usuarios/usuarios.component').then((m) => m.UsuariosComponent),
       },
       {
-        path: 'notas/registro',
-        canActivate: [rolGuard('DOCENTE')],
-        loadComponent: () =>
-          import('./pages/registro-notas/registro-notas.component').then((m) => m.RegistroNotasComponent),
+        path: 'grupos',
+        canActivate: [rolGuard('ADMIN')],
+        loadComponent: () => import('./pages/grupos/grupos.component').then((m) => m.GruposComponent),
       },
       {
-        path: 'notas/consulta',
+        path: 'notas',
+        canActivate: [rolGuard('ADMIN', 'DOCENTE')],
         loadComponent: () =>
-          import('./pages/consulta-notas/consulta-notas.component').then((m) => m.ConsultaNotasComponent),
+          import('./pages/notas/grupos-lista.component').then((m) => m.GruposListaComponent),
+      },
+      {
+        path: 'notas/grupo/:id',
+        canActivate: [rolGuard('ADMIN', 'DOCENTE')],
+        loadComponent: () =>
+          import('./pages/notas/grupo-actividades.component').then((m) => m.GrupoActividadesComponent),
+      },
+      {
+        path: 'notas/actividad/:id',
+        canActivate: [rolGuard('ADMIN', 'DOCENTE')],
+        loadComponent: () =>
+          import('./pages/notas/actividad-rubrica.component').then((m) => m.ActividadRubricaComponent),
+      },
+      {
+        path: 'mis-notas',
+        canActivate: [rolGuard('ESTUDIANTE')],
+        loadComponent: () =>
+          import('./pages/notas/grupos-lista.component').then((m) => m.GruposListaComponent),
+      },
+      {
+        path: 'mis-notas/grupo/:id',
+        canActivate: [rolGuard('ESTUDIANTE')],
+        loadComponent: () =>
+          import('./pages/mis-notas/mis-notas-grupo.component').then((m) => m.MisNotasGrupoComponent),
       },
     ],
   },

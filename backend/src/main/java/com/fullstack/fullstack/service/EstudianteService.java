@@ -6,7 +6,7 @@ import com.fullstack.fullstack.exception.ConflictoException;
 import com.fullstack.fullstack.exception.ResourceNotFoundException;
 import com.fullstack.fullstack.model.entity.Estudiante;
 import com.fullstack.fullstack.repository.EstudianteRepository;
-import com.fullstack.fullstack.repository.NotaRepository;
+import com.fullstack.fullstack.repository.MatriculaRepository;
 import com.fullstack.fullstack.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,14 +19,14 @@ import java.util.List;
 public class EstudianteService {
 
     private final EstudianteRepository estudianteRepository;
-    private final NotaRepository notaRepository;
+    private final MatriculaRepository matriculaRepository;
     private final UsuarioRepository usuarioRepository;
 
     public EstudianteService(EstudianteRepository estudianteRepository,
-                             NotaRepository notaRepository,
+                             MatriculaRepository matriculaRepository,
                              UsuarioRepository usuarioRepository) {
         this.estudianteRepository = estudianteRepository;
-        this.notaRepository = notaRepository;
+        this.matriculaRepository = matriculaRepository;
         this.usuarioRepository = usuarioRepository;
     }
 
@@ -74,11 +74,11 @@ public class EstudianteService {
         return EstudianteResponse.from(estudianteRepository.save(estudiante));
     }
 
-    /** Elimina un estudiante. Si tiene notas o un usuario vinculado no se permite, para no perder información académica. */
+    /** Elimina un estudiante. Si está matriculado en un grupo o tiene un usuario vinculado no se permite, para no perder información académica. */
     public void eliminar(Long id) {
         Estudiante estudiante = buscar(id);
-        if (notaRepository.existsByEstudianteId(id)) {
-            throw new ConflictoException("No se puede eliminar a " + estudiante.getNombre() + " porque tiene notas registradas");
+        if (matriculaRepository.existsByEstudianteId(id)) {
+            throw new ConflictoException("No se puede eliminar a " + estudiante.getNombre() + " porque está matriculado en algún grupo");
         }
         if (usuarioRepository.existsByEstudianteId(id)) {
             throw new ConflictoException("No se puede eliminar a " + estudiante.getNombre() + " porque tiene un usuario asociado");

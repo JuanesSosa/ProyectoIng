@@ -5,7 +5,7 @@ import com.fullstack.fullstack.exception.ConflictoException;
 import com.fullstack.fullstack.exception.ResourceNotFoundException;
 import com.fullstack.fullstack.model.entity.Estudiante;
 import com.fullstack.fullstack.repository.EstudianteRepository;
-import com.fullstack.fullstack.repository.NotaRepository;
+import com.fullstack.fullstack.repository.MatriculaRepository;
 import com.fullstack.fullstack.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Pruebas del servicio de estudiantes: documento único y protección de estudiantes con notas. */
+/** Pruebas del servicio de estudiantes: documento único y protección de estudiantes matriculados. */
 @ExtendWith(MockitoExtension.class)
 class EstudianteServiceTest {
 
@@ -29,7 +29,7 @@ class EstudianteServiceTest {
     private EstudianteRepository estudianteRepository;
 
     @Mock
-    private NotaRepository notaRepository;
+    private MatriculaRepository matriculaRepository;
 
     @Mock
     private UsuarioRepository usuarioRepository;
@@ -49,18 +49,18 @@ class EstudianteServiceTest {
     }
 
     @Test
-    void noPermiteEliminarUnEstudianteConNotas() {
+    void noPermiteEliminarUnEstudianteMatriculado() {
         when(estudianteRepository.findById(1L)).thenReturn(Optional.of(juan));
-        when(notaRepository.existsByEstudianteId(1L)).thenReturn(true);
+        when(matriculaRepository.existsByEstudianteId(1L)).thenReturn(true);
 
         assertThrows(ConflictoException.class, () -> service.eliminar(1L));
         verify(estudianteRepository, never()).delete(any());
     }
 
     @Test
-    void eliminaUnEstudianteSinNotasNiUsuario() {
+    void eliminaUnEstudianteSinMatriculaNiUsuario() {
         when(estudianteRepository.findById(1L)).thenReturn(Optional.of(juan));
-        when(notaRepository.existsByEstudianteId(1L)).thenReturn(false);
+        when(matriculaRepository.existsByEstudianteId(1L)).thenReturn(false);
         when(usuarioRepository.existsByEstudianteId(1L)).thenReturn(false);
 
         service.eliminar(1L);

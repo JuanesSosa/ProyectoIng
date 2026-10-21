@@ -29,7 +29,7 @@ public class JwtService {
     }
 
     /**
-     * Crea el token de un usuario. Claims: subject = correo, nombre, rol y (solo para estudiantes) estudianteId.
+     * Crea el token de un usuario. Claims: subject = correo, uid (id del usuario), nombre, rol y (solo para estudiantes) estudianteId.
      * El estudianteId viaja como texto para evitar diferencias de tipo numérico al decodificarlo.
      */
     public Token generar(Usuario usuario) {
@@ -41,6 +41,7 @@ public class JwtService {
                 .issuedAt(ahora)
                 .expiresAt(expira)
                 .subject(usuario.getCorreo())
+                .claim("uid", String.valueOf(usuario.getId()))
                 .claim("nombre", usuario.getNombre())
                 .claim("rol", usuario.getRol().name());
         if (usuario.getEstudiante() != null) {

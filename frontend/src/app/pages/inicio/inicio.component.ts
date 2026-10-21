@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { Panel } from '../../core/api.models';
-import { NotaService } from '../../services/nota.service';
+import { GrupoService } from '../../services/grupo.service';
 
 /** Panel principal (RF-02, mock-up 5.2): totales para admin/docente y accesos rápidos según rol. */
 @Component({
@@ -15,22 +15,27 @@ import { NotaService } from '../../services/nota.service';
       <div class="fila">
         <div class="tarjeta dato"><span class="suave">Estudiantes</span><strong>{{ panel()?.estudiantes ?? '–' }}</strong></div>
         <div class="tarjeta dato"><span class="suave">Asignaturas</span><strong>{{ panel()?.asignaturas ?? '–' }}</strong></div>
-        <div class="tarjeta dato"><span class="suave">Notas registradas</span><strong>{{ panel()?.notas ?? '–' }}</strong></div>
+        <div class="tarjeta dato"><span class="suave">Grupos</span><strong>{{ panel()?.grupos ?? '–' }}</strong></div>
+        <div class="tarjeta dato"><span class="suave">Calificaciones</span><strong>{{ panel()?.calificaciones ?? '–' }}</strong></div>
       </div>
     }
     <div class="tarjeta">
       <h2>Accesos rápidos</h2>
       <div class="fila">
         @if (auth.tieneRol('DOCENTE')) {
-          <a class="btn" routerLink="/notas/registro">Registrar notas</a>
+          <a class="btn" routerLink="/notas">Calificar</a>
+        }
+        @if (auth.tieneRol('ADMIN')) {
+          <a class="btn" routerLink="/grupos">Grupos y matrículas</a>
+          <a class="btn btn-secundario" routerLink="/notas">Ver notas</a>
+          <a class="btn btn-secundario" routerLink="/usuarios">Usuarios</a>
         }
         @if (auth.tieneRol('ADMIN', 'DOCENTE')) {
           <a class="btn btn-secundario" routerLink="/estudiantes">Estudiantes</a>
         }
-        @if (auth.tieneRol('ADMIN')) {
-          <a class="btn btn-secundario" routerLink="/usuarios">Usuarios</a>
+        @if (auth.tieneRol('ESTUDIANTE')) {
+          <a class="btn" routerLink="/mis-notas">Mis notas</a>
         }
-        <a class="btn btn-secundario" routerLink="/notas/consulta">Consultar notas</a>
       </div>
     </div>
   `,
@@ -45,12 +50,12 @@ import { NotaService } from '../../services/nota.service';
 })
 export class InicioComponent implements OnInit {
   protected readonly auth = inject(AuthService);
-  private readonly notas = inject(NotaService);
+  private readonly grupos = inject(GrupoService);
   readonly panel = signal<Panel | null>(null);
 
   ngOnInit(): void {
     if (this.auth.tieneRol('ADMIN', 'DOCENTE')) {
-      this.notas.panel().subscribe({ next: (p) => this.panel.set(p), error: () => this.panel.set(null) });
+      this.grupos.panel().subscribe({ next: (p) => this.panel.set(p), error: () => this.panel.set(null) });
     }
   }
 }
