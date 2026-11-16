@@ -1,4 +1,5 @@
+/** Configuración para desarrollo (ng serve): se usa gracias a fileReplacements en angular.json. */
 export const environment = {
-  production: true,
-  apiUrl: 'https://proyectoing-s55r.onrender.com/api'
+  production: false,
+  apiUrl: 'http://localhost:8080/api'
 };
