@@ -2,10 +2,7 @@ package com.fullstack.fullstack.repository;
 
 import com.fullstack.fullstack.model.entity.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,8 +19,4 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     boolean existsByEstudianteId(Long estudianteId);
 
     List<Usuario> findAllByOrderByNombreAsc();
-
-    /** Usuarios activos vinculados a esos estudiantes (con el estudiante ya cargado). */
-    @Query("select u from Usuario u join fetch u.estudiante e where e.id in :ids and u.activo = true")
-    List<Usuario> findActivosDeEstudiantes(@Param("ids") Collection<Long> ids);
 }

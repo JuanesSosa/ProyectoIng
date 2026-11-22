@@ -82,7 +82,8 @@ public class ProgresoService {
         for (Matricula matricula : matriculaRepository.findByGrupoIdOrderByEstudianteNombreAsc(grupo.getId())) {
             Estudiante e = matricula.getEstudiante();
             var res = CalculoNotas.actividad(aCriterios(criterios, notasPorEstudiante.getOrDefault(e.getId(), Map.of())));
-            resultado.add(new EstudianteActividad(e.getId(), e.getDocumento(), e.getNombre(), res.nota(), res.avance()));
+            resultado.add(new EstudianteActividad(e.getId(), e.getDocumento(), e.getCodigo(), e.getNombre(),
+                    e.getCorreo(), res.nota(), res.avance()));
         }
         return resultado;
     }
@@ -222,7 +223,7 @@ public class ProgresoService {
         var total = CalculoNotas.grupo(paraCalculo);
         return new ResumenGrupoResponse(grupo.getId(), grupo.getAsignatura().getId(), grupo.getAsignatura().getNombre(),
                 grupo.getNombre(), grupo.getPeriodo(), estudiante.getId(), estudiante.getDocumento(),
-                estudiante.getNombre(), resumenes, pesoActividades, total.promedio(), total.acumulado(), total.avance());
+                estudiante.getCodigo(), estudiante.getNombre(), estudiante.getCorreo(), resumenes, pesoActividades, total.promedio(), total.acumulado(), total.avance());
     }
 
     private Map<Long, List<Criterio>> criteriosPorActividad(Long grupoId) {

@@ -79,21 +79,21 @@ import { UsuarioService } from '../../services/usuario.service';
           <div class="campo"><label for="nuevo">Matricular estudiante</label>
             <select id="nuevo" name="nuevo" [(ngModel)]="aMatricular">
               <option [ngValue]="null">— Selecciona —</option>
-              @for (e of disponibles(); track e.id) { <option [ngValue]="e.id">{{ e.nombre }} ({{ e.documento }})</option> }
+              @for (e of disponibles(); track e.id) { <option [ngValue]="e.id">{{ e.nombre }} · {{ e.codigo ?? e.documento }}</option> }
             </select></div>
           <button type="button" class="btn" [disabled]="aMatricular === null" (click)="matricular()">Matricular</button>
         </div>
         @if (errorMatricula()) { <p class="error" role="alert">{{ errorMatricula() }}</p> }
         <table>
-          <thead><tr><th>Documento</th><th>Nombre</th><th>Curso</th><th></th></tr></thead>
+          <thead><tr><th>Documento</th><th>Código</th><th>Nombre</th><th>Correo</th><th>Curso</th><th></th></tr></thead>
           <tbody>
             @for (m of matriculados(); track m.estudianteId) {
               <tr>
-                <td>{{ m.documento }}</td><td>{{ m.nombre }}</td><td>{{ m.curso }}</td>
+                <td>{{ m.documento }}</td><td>{{ m.codigo ?? '—' }}</td><td>{{ m.nombre }}</td><td>{{ m.correo ?? '—' }}</td><td>{{ m.curso }}</td>
                 <td class="acciones"><button type="button" class="btn btn-peligro btn-pequeno" (click)="quitar(m)">Quitar</button></td>
               </tr>
             } @empty {
-              <tr><td colspan="4" class="suave">Aún no hay estudiantes matriculados.</td></tr>
+              <tr><td colspan="6" class="suave">Aún no hay estudiantes matriculados.</td></tr>
             }
           </tbody>
         </table>

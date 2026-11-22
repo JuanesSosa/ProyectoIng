@@ -1,4 +1,4 @@
-import { avanceRubrica, calcularPromedio, pesoTotal, promedioGeneral } from './promedio';
+import { avanceRubrica, calcularPromedio, notaNecesaria, pesoTotal, promedioGeneral } from './promedio';
 
 describe('promedio', () => {
   it('calcula el promedio ponderado del mock-up 5.4 (30/30/40) = 4.20', () => {
@@ -71,5 +71,19 @@ describe('rúbrica', () => {
     expect(calcularPromedio(vacia)).toBeNull();
     expect(avanceRubrica(vacia)).toBe(0);
     expect(avanceRubrica([])).toBe(0);
+  });
+});
+
+describe('notaNecesaria', () => {
+  it('calcula el promedio que falta para llegar a 3.0', () => {
+    // 1.35 puntos con 30% evaluado: faltan 1.65 puntos en el 70% restante = 2.36
+    expect(notaNecesaria(1.35, 30)).toBe(2.36);
+  });
+  it('devuelve null si el curso ya se evaluó por completo', () => {
+    expect(notaNecesaria(3.4, 100)).toBeNull();
+  });
+  it('indica con un valor <= 0 que ya alcanzó el mínimo y > 5 que es imposible', () => {
+    expect(notaNecesaria(3.2, 80)!).toBeLessThanOrEqual(0);
+    expect(notaNecesaria(0.5, 80)!).toBeGreaterThan(5);
   });
 });

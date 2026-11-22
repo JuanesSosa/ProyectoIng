@@ -11,6 +11,7 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -53,6 +54,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccesoDenegadoException.class)
     public ResponseEntity<Map<String, Object>> handleAccesoDenegado(AccesoDenegadoException ex) {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), null);
+    }
+
+    /** 413: el archivo supera el tamaño máximo permitido. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleArchivoGrande(MaxUploadSizeExceededException ex) {
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, "El archivo supera el tamaño máximo permitido (10 MB)", null);
     }
 
     /** 400: falló la validación (@Valid) del cuerpo. Devuelve los errores por campo en "errors". */

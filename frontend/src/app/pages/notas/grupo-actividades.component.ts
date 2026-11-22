@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
-import { Actividad, Grupo, ResumenGrupo } from '../../core/api.models';
+import { Actividad, EnvioCorreos, Grupo, ResumenGrupo } from '../../core/api.models';
 import { mensajeError } from '../../core/errores';
 import { NOTA_MINIMA_APROBATORIA } from '../../core/promedio';
 import { ActividadService } from '../../services/actividad.service';
@@ -78,16 +78,24 @@ import { GrupoService } from '../../services/grupo.service';
 
     @if (progreso().length > 0) {
       <div class="tarjeta">
-        <h2>Progreso de los estudiantes</h2>
-        <p class="suave">Acumulado = puntos ganados sobre 5.0 (lo no calificado cuenta 0). Promedio = nota de lo evaluado hasta ahora.</p>
-                @if (puedeEditar) {
-          <p>
-            <button type="button" class="btn btn-pequeno" [disabled]="enviando()" (click)="enviarInforme()">
-              {{ enviando() ? 'Enviando…' : 'Enviar informe por correo' }}
+        <div class="cabecera">
+          <h2>Progreso de los estudiantes</h2>
+          @if (puedeEditar) {
+            <button type="button" class="btn btn-pequeno" [disabled]="enviando()" (click)="enviarCorreos()">
+              {{ enviando() ? 'Enviando…' : 'Enviar notas por correo a todo el grupo' }}
             </button>
+          }
+        </div>
+        @if (errorCorreo()) { <p class="error" role="alert">{{ errorCorreo() }}</p> }
+        @if (resultadoCorreo(); as r) {
+          <p class="ok" role="status">
+            Correos enviados: {{ r.enviados }}@if (r.fallidos > 0) { · Sin enviar: {{ r.fallidos }} }
           </p>
-          @if (mensajeEnvio()) { <p role="status">{{ mensajeEnvio() }}</p> }
+          @if (r.detalles.length > 0) {
+            <ul class="suave">@for (d of r.detalles; track d) { <li>{{ d }}</li> }</ul>
+          }
         }
+        <p class="suave">Acumulado = puntos ganados sobre 5.0 (lo no calificado cuenta 0). Promedio = nota de lo evaluado hasta ahora.</p>
         <div class="scroll">
           <table>
             <thead>
@@ -95,18 +103,29 @@ import { GrupoService } from '../../services/grupo.service';
                 <th>Estudiante</th>
                 @for (a of actividades(); track a.id) { <th class="num">{{ a.nombre }}</th> }
                 <th class="num">Avance</th><th class="num">Acumulado</th><th class="num">Promedio</th>
+                @if (puedeEditar) { <th></th> }
               </tr>
             </thead>
             <tbody>
               @for (r of progreso(); track r.estudianteId) {
                 <tr>
-                  <td>{{ r.estudianteNombre }}</td>
+                  <td>
+                    {{ r.estudianteNombre }}
+                    <div class="suave pequeno">{{ r.estudianteCodigo ?? 'sin código' }} · {{ r.estudianteCorreo ?? 'sin correo' }}</div>
+                  </td>
                   @for (ar of r.actividades; track ar.actividadId) {
                     <td class="num" [class.reprobado]="ar.nota !== null && ar.nota < minimo">{{ ar.nota ?? '–' }}</td>
                   }
                   <td class="num">{{ r.avance }}%</td>
                   <td class="num"><strong>{{ r.acumulado }}</strong></td>
                   <td class="num" [class.reprobado]="r.promedio !== null && r.promedio < minimo">{{ r.promedio ?? '–' }}</td>
+                  @if (puedeEditar) {
+                    <td class="acciones">
+                      <button type="button" class="btn btn-secundario btn-pequeno" [disabled]="enviando() || !r.estudianteCorreo"
+                              [title]="r.estudianteCorreo ? 'Enviar sus notas por correo' : 'El estudiante no tiene correo'"
+                              (click)="enviarCorreos(r.estudianteId)">Enviar correo</button>
+                    </td>
+                  }
                 </tr>
               }
             </tbody>
@@ -122,6 +141,7 @@ import { GrupoService } from '../../services/grupo.service';
       .formulario { margin-bottom: 0.75rem; }
       a { color: var(--color-primario); }
       a.btn { color: #fff; text-decoration: none; }
+      .pequeno { font-size: 0.8rem; }
     `,
   ],
 })
@@ -137,10 +157,11 @@ export class GrupoActividadesComponent implements OnInit {
   readonly actividades = signal<Actividad[]>([]);
   readonly progreso = signal<ResumenGrupo[]>([]);
   readonly error = signal('');
+  readonly errorCorreo = signal('');
+  readonly resultadoCorreo = signal<EnvioCorreos | null>(null);
+  readonly enviando = signal(false);
   readonly errorForm = signal('');
   readonly formAbierto = signal(false);
-  readonly enviando = signal(false);
-  readonly mensajeEnvio = signal('');
   readonly editandoId = signal<number | null>(null);
   form: { nombre: string; peso: number | null } = { nombre: '', peso: null };
   private grupoId = 0;
@@ -166,6 +187,23 @@ export class GrupoActividadesComponent implements OnInit {
     this.grupos.progreso(this.grupoId).subscribe({
       next: (lista) => this.progreso.set(lista),
       error: () => this.progreso.set([]),
+    });
+  }
+
+  /** Envía las notas por correo a todo el grupo o, con estudianteId, a un solo estudiante. */
+  enviarCorreos(estudianteId?: number): void {
+    if (estudianteId === undefined && !confirm('¿Enviar las notas por correo a todos los estudiantes del grupo?')) {
+      return;
+    }
+    this.enviando.set(true);
+    this.errorCorreo.set('');
+    this.resultadoCorreo.set(null);
+    this.grupos.enviarCorreos(this.grupoId, estudianteId).subscribe({
+      next: (r) => { this.enviando.set(false); this.resultadoCorreo.set(r); },
+      error: (err) => {
+        this.enviando.set(false);
+        this.errorCorreo.set(mensajeError(err, 'No se pudieron enviar los correos.'));
+      },
     });
   }
 
@@ -204,26 +242,6 @@ export class GrupoActividadesComponent implements OnInit {
     this.actividadService.eliminar(a.id).subscribe({
       next: () => this.cargar(),
       error: (err) => this.error.set(mensajeError(err, 'No se pudo eliminar la actividad.')),
-    });
-  }
-    enviarInforme(): void {
-    if (!confirm('¿Enviar el informe de notas por correo a los estudiantes de este grupo?')) {
-      return;
-    }
-    this.enviando.set(true);
-    this.mensajeEnvio.set('');
-    this.error.set('');
-    this.grupos.enviarInforme(this.grupoId).subscribe({
-      next: (r) => {
-        this.enviando.set(false);
-        this.mensajeEnvio.set(
-          `Informe enviado a ${r.enviados} estudiante(s). Sin usuario vinculado: ${r.sinCorreo}. Con error de envío: ${r.fallidos}.`,
-        );
-      },
-      error: (err) => {
-        this.enviando.set(false);
-        this.error.set(mensajeError(err, 'No se pudo enviar el informe.'));
-      },
     });
   }
 }

@@ -32,10 +32,13 @@ export interface UsuarioRequest {
   activo?: boolean;
 }
 
+/** codigo y correo pueden venir null en estudiantes creados antes de agregar esos campos. */
 export interface Estudiante {
   id?: number;
   documento: string;
+  codigo: string | null;
   nombre: string;
+  correo: string | null;
   curso: string;
 }
 
@@ -61,7 +64,9 @@ export interface Grupo {
 export interface Matriculado {
   estudianteId: number;
   documento: string;
+  codigo: string | null;
   nombre: string;
+  correo: string | null;
   curso: string;
 }
 
@@ -102,7 +107,9 @@ export interface RubricaEstudiante {
 export interface EstudianteActividad {
   estudianteId: number;
   documento: string;
+  codigo: string | null;
   nombre: string;
+  correo: string | null;
   nota: number | null;
   avance: number;
 }
@@ -125,7 +132,9 @@ export interface ResumenGrupo {
   periodo: string;
   estudianteId: number;
   estudianteDocumento: string;
+  estudianteCodigo: string | null;
   estudianteNombre: string;
+  estudianteCorreo: string | null;
   actividades: ActividadResumen[];
   pesoActividades: number;
   promedio: number | null;
@@ -139,9 +148,21 @@ export interface Panel {
   grupos: number;
   calificaciones: number;
 }
-/** Resultado de enviar el informe de notas por correo. */
-export interface EnvioInforme {
+
+/** Archivo que un estudiante subió como entrega de una actividad. fecha es texto ISO-8601. */
+export interface Entrega {
+  id: number;
+  actividadId: number;
+  estudianteId: number;
+  estudianteNombre: string;
+  nombre: string;
+  tamano: number;
+  fecha: string;
+}
+
+/** Resultado de enviar las notas por correo. */
+export interface EnvioCorreos {
   enviados: number;
-  sinCorreo: number;
   fallidos: number;
+  detalles: string[];
 }

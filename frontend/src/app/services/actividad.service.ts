@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Actividad, EstudianteActividad, RubricaEstudiante } from '../core/api.models';
+import { Actividad, Entrega, EstudianteActividad, RubricaEstudiante } from '../core/api.models';
 
 /** Calificación de una actividad: valor null = quitar la nota de ese criterio. */
 export interface CalificacionRequest {
@@ -55,5 +55,29 @@ export class ActividadService {
     return this.http.put<RubricaEstudiante>(`${this.url}/${id}/estudiantes/${estudianteId}/calificaciones`, {
       calificaciones,
     });
+  }
+
+  // ---------- entregas (archivos) ----------
+
+  /** Entregas de un estudiante en la actividad (el estudiante ve solo las suyas). */
+  entregas(id: number, estudianteId?: number): Observable<Entrega[]> {
+    const query = estudianteId === undefined ? '' : `?estudianteId=${estudianteId}`;
+    return this.http.get<Entrega[]>(`${this.url}/${id}/entregas${query}`);
+  }
+
+  /** Sube un archivo como entrega (solo estudiantes). */
+  subirEntrega(id: number, archivo: File): Observable<Entrega> {
+    const datos = new FormData();
+    datos.append('archivo', archivo);
+    return this.http.post<Entrega>(`${this.url}/${id}/entregas`, datos);
+  }
+
+  eliminarEntrega(entregaId: number): Observable<void> {
+    return this.http.delete<void>(`${environment.apiUrl}/entregas/${entregaId}`);
+  }
+
+  /** Descarga el archivo (la petición lleva el token, por eso no es un simple enlace). */
+  descargarEntrega(entregaId: number): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/entregas/${entregaId}/descargar`, { responseType: 'blob' });
   }
 }

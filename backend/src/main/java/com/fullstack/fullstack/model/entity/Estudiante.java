@@ -33,8 +33,16 @@ public class Estudiante {
     @Column(nullable = false, unique = true, length = 30)
     private String documento;
 
+    /** Código estudiantil (único). Puede ser null en estudiantes creados antes de existir este campo. */
+    @Column(unique = true, length = 20)
+    private String codigo;
+
     @Column(nullable = false, length = 120)
     private String nombre;
+
+    /** Correo del estudiante, al que se envían sus notas. Puede ser null en estudiantes antiguos. */
+    @Column(length = 150)
+    private String correo;
 
     /** Curso o grupo, por ejemplo "10A". */
     @Column(nullable = false, length = 30)

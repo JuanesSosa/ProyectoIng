@@ -37,14 +37,24 @@ class EstudianteServiceTest {
     @InjectMocks
     private EstudianteService service;
 
-    private final Estudiante juan = Estudiante.builder().id(1L).documento("123456").nombre("Juan").curso("10A").build();
+    private final Estudiante juan = Estudiante.builder().id(1L).documento("123456").codigo("2220242001").nombre("Juan").curso("10A").build();
 
     @Test
     void noPermiteCrearDosEstudiantesConElMismoDocumento() {
         when(estudianteRepository.existsByDocumento("123456")).thenReturn(true);
 
         assertThrows(ConflictoException.class,
-                () -> service.crear(new EstudianteRequest(" 123456 ", "Otro", "10B")));
+                () -> service.crear(new EstudianteRequest(" 123456 ", "999", "Otro", "otro@x.com", "10B")));
+        verify(estudianteRepository, never()).save(any());
+    }
+
+    @Test
+    void noPermiteCrearDosEstudiantesConElMismoCodigo() {
+        when(estudianteRepository.existsByDocumento("777")).thenReturn(false);
+        when(estudianteRepository.existsByCodigoIgnoreCase("2220242001")).thenReturn(true);
+
+        assertThrows(ConflictoException.class,
+                () -> service.crear(new EstudianteRequest("777", " 2220242001 ", "Otro", "otro@x.com", "10B")));
         verify(estudianteRepository, never()).save(any());
     }
 

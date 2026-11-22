@@ -11,13 +11,17 @@ public interface EstudianteRepository extends JpaRepository<Estudiante, Long> {
 
     List<Estudiante> findAllByOrderByNombreAsc();
 
-    /** Búsqueda por nombre o documento (parcial y sin distinguir mayúsculas), HU-08. */
-    List<Estudiante> findByNombreContainingIgnoreCaseOrDocumentoContainingIgnoreCaseOrderByNombreAsc(
-            String nombre, String documento);
+    /** Búsqueda por nombre, documento, código o correo (parcial y sin distinguir mayúsculas), HU-08. */
+    List<Estudiante> findByNombreContainingIgnoreCaseOrDocumentoContainingIgnoreCaseOrCodigoContainingIgnoreCaseOrCorreoContainingIgnoreCaseOrderByNombreAsc(
+            String nombre, String documento, String codigo, String correo);
 
     Optional<Estudiante> findByDocumento(String documento);
 
     boolean existsByDocumento(String documento);
 
     boolean existsByDocumentoAndIdNot(String documento, Long id);
+
+    boolean existsByCodigoIgnoreCase(String codigo);
+
+    boolean existsByCodigoIgnoreCaseAndIdNot(String codigo, Long id);
 }

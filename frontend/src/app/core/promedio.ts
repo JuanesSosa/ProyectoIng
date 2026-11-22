@@ -58,3 +58,17 @@ export function avanceRubrica(items: ItemNota[]): number {
     .reduce((suma, i) => suma + (i.peso ?? 0), 0);
   return Math.floor((200 * calificado + total) / (2 * total));
 }
+
+/**
+ * Nota promedio que el estudiante necesita sacar en lo que le falta por evaluar para llegar a la nota mínima.
+ * acumulado = puntos ganados sobre 5.0; avance = % de la asignatura ya evaluado (0 a 100).
+ * Devuelve null si ya no queda nada por evaluar; un valor <= 0 significa que ya alcanzó la nota mínima
+ * y uno > 5 que ya no es posible alcanzarla.
+ */
+export function notaNecesaria(acumulado: number, avance: number, minimo = NOTA_MINIMA_APROBATORIA): number | null {
+  const restante = 100 - avance;
+  if (restante <= 0) {
+    return null;
+  }
+  return Math.round(((minimo - acumulado) / (restante / 100)) * 100) / 100;
+}

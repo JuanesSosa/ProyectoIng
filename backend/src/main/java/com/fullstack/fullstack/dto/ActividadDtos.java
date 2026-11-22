@@ -107,8 +107,8 @@ public final class ActividadDtos {
     }
 
     /** Estudiante del grupo con su nota y avance en una actividad. */
-    public record EstudianteActividad(Long estudianteId, String documento, String nombre,
-                                      BigDecimal nota, int avance) {
+    public record EstudianteActividad(Long estudianteId, String documento, String codigo, String nombre,
+                                      String correo, BigDecimal nota, int avance) {
     }
 
     public record ActividadResumen(Long actividadId, String nombre, Integer peso, List<CriterioNota> criterios,
@@ -122,7 +122,8 @@ public final class ActividadDtos {
      */
     public record ResumenGrupoResponse(Long grupoId, Long asignaturaId, String asignaturaNombre, String grupoNombre,
                                        String periodo, Long estudianteId, String estudianteDocumento,
-                                       String estudianteNombre, List<ActividadResumen> actividades,
+                                       String estudianteCodigo, String estudianteNombre, String estudianteCorreo,
+                                       List<ActividadResumen> actividades,
                                        int pesoActividades, BigDecimal promedio, BigDecimal acumulado, int avance) {
     }
 }

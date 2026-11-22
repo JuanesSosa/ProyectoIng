@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Actividad, EnvioInforme, Grupo, Matriculado, Panel, ResumenGrupo } from '../core/api.models';
+import { Actividad, EnvioCorreos, Grupo, Matriculado, Panel, ResumenGrupo } from '../core/api.models';
 
 /** Peticiones HTTP de grupos, matrículas, actividades del grupo y seguimiento. */
 @Injectable({ providedIn: 'root' })
@@ -65,10 +65,13 @@ export class GrupoService {
   progreso(id: number): Observable<ResumenGrupo[]> {
     return this.http.get<ResumenGrupo[]>(`${this.url}/${id}/progreso`);
   }
-  /** El docente envía por correo el informe de notas a los estudiantes del grupo. */
-  enviarInforme(id: number): Observable<EnvioInforme> {
-    return this.http.post<EnvioInforme>(`${this.url}/${id}/informe/enviar`, {});
+
+  /** Envía las notas por correo a todo el grupo o, con estudianteId, a un solo estudiante (docente). */
+  enviarCorreos(id: number, estudianteId?: number): Observable<EnvioCorreos> {
+    const query = estudianteId === undefined ? '' : `?estudianteId=${estudianteId}`;
+    return this.http.post<EnvioCorreos>(`${this.url}/${id}/correos${query}`, {});
   }
+
   panel(): Observable<Panel> {
     return this.http.get<Panel>(`${environment.apiUrl}/panel`);
   }

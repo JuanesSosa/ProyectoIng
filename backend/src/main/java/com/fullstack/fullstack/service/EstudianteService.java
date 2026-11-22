@@ -39,7 +39,8 @@ public class EstudianteService {
         } else {
             String q = texto.trim();
             estudiantes = estudianteRepository
-                    .findByNombreContainingIgnoreCaseOrDocumentoContainingIgnoreCaseOrderByNombreAsc(q, q);
+                    .findByNombreContainingIgnoreCaseOrDocumentoContainingIgnoreCaseOrCodigoContainingIgnoreCaseOrCorreoContainingIgnoreCaseOrderByNombreAsc(
+                            q, q, q, q);
         }
         return estudiantes.stream().map(EstudianteResponse::from).toList();
     }
@@ -54,8 +55,14 @@ public class EstudianteService {
         if (estudianteRepository.existsByDocumento(documento)) {
             throw new ConflictoException("Ya existe un estudiante con el documento " + documento);
         }
+        String codigo = request.codigo().trim();
+        if (estudianteRepository.existsByCodigoIgnoreCase(codigo)) {
+            throw new ConflictoException("Ya existe un estudiante con el código " + codigo);
+        }
         Estudiante estudiante = Estudiante.builder()
                 .documento(documento)
+                .codigo(codigo)
+                .correo(request.correo().trim())
                 .nombre(request.nombre().trim())
                 .curso(request.curso().trim())
                 .build();
@@ -68,7 +75,13 @@ public class EstudianteService {
         if (estudianteRepository.existsByDocumentoAndIdNot(documento, id)) {
             throw new ConflictoException("Ya existe otro estudiante con el documento " + documento);
         }
+        String codigo = request.codigo().trim();
+        if (estudianteRepository.existsByCodigoIgnoreCaseAndIdNot(codigo, id)) {
+            throw new ConflictoException("Ya existe otro estudiante con el código " + codigo);
+        }
         estudiante.setDocumento(documento);
+        estudiante.setCodigo(codigo);
+        estudiante.setCorreo(request.correo().trim());
         estudiante.setNombre(request.nombre().trim());
         estudiante.setCurso(request.curso().trim());
         return EstudianteResponse.from(estudianteRepository.save(estudiante));

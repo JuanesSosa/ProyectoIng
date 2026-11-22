@@ -24,8 +24,12 @@ import { EstudianteService } from '../../services/estudiante.service';
         <div class="fila">
           <div class="campo"><label for="doc">Documento</label>
             <input id="doc" name="documento" [(ngModel)]="form.documento" required maxlength="30" /></div>
+          <div class="campo"><label for="cod">Código</label>
+            <input id="cod" name="codigo" [(ngModel)]="form.codigo" required maxlength="20" /></div>
           <div class="campo"><label for="nom">Nombre</label>
             <input id="nom" name="nombre" [(ngModel)]="form.nombre" required maxlength="120" /></div>
+          <div class="campo"><label for="cor">Correo</label>
+            <input id="cor" name="correo" type="email" [(ngModel)]="form.correo" required email maxlength="150" /></div>
           <div class="campo"><label for="cur">Curso</label>
             <input id="cur" name="curso" [(ngModel)]="form.curso" required maxlength="30" /></div>
         </div>
@@ -39,17 +43,21 @@ import { EstudianteService } from '../../services/estudiante.service';
 
     <div class="tarjeta">
       <div class="fila" style="margin-bottom: 1rem">
-        <div class="campo"><label for="q">Buscar por nombre o documento</label>
-          <input id="q" name="q" [(ngModel)]="texto" (ngModelChange)="buscar()" placeholder="Ej: Juan o 123456" /></div>
+        <div class="campo"><label for="q">Buscar por nombre, documento, código o correo</label>
+          <input id="q" name="q" [(ngModel)]="texto" (ngModelChange)="buscar()" placeholder="Ej: Juan, 123456 o juan@correo.com" /></div>
       </div>
       @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
       <div class="scroll">
         <table>
-          <thead><tr><th>Documento</th><th>Nombre</th><th>Curso</th>@if (esAdmin) { <th></th> }</tr></thead>
+          <thead><tr><th>Documento</th><th>Código</th><th>Nombre</th><th>Correo</th><th>Curso</th>@if (esAdmin) { <th></th> }</tr></thead>
           <tbody>
             @for (e of estudiantes(); track e.id) {
               <tr>
-                <td>{{ e.documento }}</td><td>{{ e.nombre }}</td><td>{{ e.curso }}</td>
+                <td>{{ e.documento }}</td>
+                <td>{{ e.codigo ?? '—' }}</td>
+                <td>{{ e.nombre }}</td>
+                <td>{{ e.correo ?? '—' }}</td>
+                <td>{{ e.curso }}</td>
                 @if (esAdmin) {
                   <td class="acciones">
                     <button type="button" class="btn btn-secundario btn-pequeno" (click)="editar(e)">Editar</button>
@@ -58,7 +66,7 @@ import { EstudianteService } from '../../services/estudiante.service';
                 }
               </tr>
             } @empty {
-              <tr><td [attr.colspan]="esAdmin ? 4 : 3" class="suave">No hay estudiantes.</td></tr>
+              <tr><td [attr.colspan]="esAdmin ? 6 : 5" class="suave">No hay estudiantes.</td></tr>
             }
           </tbody>
         </table>
@@ -77,7 +85,7 @@ export class EstudiantesComponent implements OnInit {
   readonly formAbierto = signal(false);
   readonly editandoId = signal<number | null>(null);
   texto = '';
-  form: Estudiante = { documento: '', nombre: '', curso: '' };
+  form: Estudiante = { documento: '', codigo: '', nombre: '', correo: '', curso: '' };
   private temporizador: ReturnType<typeof setTimeout> | undefined;
 
   ngOnInit(): void {
@@ -98,14 +106,14 @@ export class EstudiantesComponent implements OnInit {
   }
 
   nuevo(): void {
-    this.form = { documento: '', nombre: '', curso: '' };
+    this.form = { documento: '', codigo: '', nombre: '', correo: '', curso: '' };
     this.editandoId.set(null);
     this.errorForm.set('');
     this.formAbierto.set(true);
   }
 
   editar(e: Estudiante): void {
-    this.form = { documento: e.documento, nombre: e.nombre, curso: e.curso };
+    this.form = { documento: e.documento, codigo: e.codigo, nombre: e.nombre, correo: e.correo, curso: e.curso };
     this.editandoId.set(e.id ?? null);
     this.errorForm.set('');
     this.formAbierto.set(true);

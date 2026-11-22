@@ -33,3 +33,7 @@ build/
 .vscode/
 
 oracleJdk-27/
+
+# Archivos subidos por los estudiantes (entregas)
+backend/uploads/
+uploads/

@@ -10,7 +10,7 @@ export class EstudianteService {
   private readonly http = inject(HttpClient);
   private readonly url = `${environment.apiUrl}/estudiantes`;
 
-  /** Lista todos o, si hay texto, busca por nombre o documento. */
+  /** Lista todos o, si hay texto, busca por nombre, documento, código o correo. */
   listar(texto = ''): Observable<Estudiante[]> {
     let params = new HttpParams();
     if (texto.trim()) {

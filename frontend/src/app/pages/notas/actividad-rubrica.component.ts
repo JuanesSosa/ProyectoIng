@@ -2,7 +2,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
-import { Actividad, EstudianteActividad } from '../../core/api.models';
+import { Actividad, Entrega, EstudianteActividad } from '../../core/api.models';
+import { formatoTamano, guardarBlob } from '../../core/archivos';
 import { mensajeError } from '../../core/errores';
 import { NOTA_MINIMA_APROBATORIA, avanceRubrica, calcularPromedio } from '../../core/promedio';
 import { ActividadService } from '../../services/actividad.service';
@@ -86,10 +87,15 @@ export function validarRubrica(filas: FilaCriterio[]): string {
         <select id="est" name="estudiante" [ngModel]="estudianteId()" (ngModelChange)="elegir($event)" [disabled]="editandoRubrica()">
           <option [ngValue]="null">— Selecciona —</option>
           @for (e of estudiantes(); track e.estudianteId) {
-            <option [ngValue]="e.estudianteId">{{ e.nombre }} ({{ e.nota === null ? 'sin calificar' : e.nota }})</option>
+            <option [ngValue]="e.estudianteId">{{ e.nombre }} · {{ e.codigo ?? 'sin código' }} ({{ e.nota === null ? 'sin calificar' : e.nota }})</option>
           }
         </select>
       </div>
+      @if (seleccionado(); as s) {
+        <p class="suave" style="margin-bottom: 0">
+          <strong>{{ s.nombre }}</strong> · Código: {{ s.codigo ?? '—' }} · Correo: {{ s.correo ?? '—' }} · Documento: {{ s.documento }}
+        </p>
+      }
     </div>
 
     <div class="tarjeta">
@@ -167,12 +173,34 @@ export function validarRubrica(filas: FilaCriterio[]): string {
         }
       }
     </div>
+
+    @if (estudianteId() !== null) {
+      <div class="tarjeta">
+        <h2>Entregas del estudiante</h2>
+        @if (errorEntregas()) { <p class="error" role="alert">{{ errorEntregas() }}</p> }
+        @if (entregas().length === 0) {
+          <p class="suave">El estudiante no ha subido archivos para esta actividad.</p>
+        } @else {
+          <ul class="entregas">
+            @for (e of entregas(); track e.id) {
+              <li>
+                <button type="button" class="btn btn-secundario btn-pequeno" (click)="descargar(e)">Descargar</button>
+                <span>{{ e.nombre }}</span>
+                <span class="suave">{{ tamano(e.tamano) }} · {{ e.fecha.substring(0, 10) }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
   `,
   styles: [
     `
       h2 { margin: 0; font-size: 1.1rem; }
       .cabecera { margin-bottom: 0.75rem; }
       a { color: var(--color-primario); }
+      .entregas { list-style: none; padding: 0; margin: 0.75rem 0 0; display: grid; gap: 0.5rem; }
+      .entregas li { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
     `,
   ],
 })
@@ -191,6 +219,11 @@ export class ActividadRubricaComponent implements OnInit {
   readonly error2 = signal('');
   readonly mensaje = signal('');
   readonly guardando = signal(false);
+
+  readonly entregas = signal<Entrega[]>([]);
+  readonly errorEntregas = signal('');
+  readonly seleccionado = computed(() => this.estudiantes().find((e) => e.estudianteId === this.estudianteId()) ?? null);
+  protected readonly tamano = formatoTamano;
 
   readonly editandoRubrica = signal(false);
   readonly criterios = signal<FilaCriterio[]>([]);
@@ -238,15 +271,29 @@ export class ActividadRubricaComponent implements OnInit {
     this.mensaje.set('');
     this.error2.set('');
     this.filas.set([]);
+    this.entregas.set([]);
+    this.errorEntregas.set('');
     if (id === null) {
       return;
     }
+    this.servicio.entregas(this.actividadId, id).subscribe({
+      next: (lista) => this.entregas.set(lista),
+      error: (err) => this.errorEntregas.set(mensajeError(err, 'No se pudieron cargar las entregas.')),
+    });
     this.servicio.rubrica(this.actividadId, id).subscribe({
       next: (r) => {
         this.filas.set(r.criterios.map((c) => ({ criterioId: c.criterioId, nombre: c.nombre, peso: c.peso, valor: c.valor })));
         this.tocar();
       },
       error: (err) => this.error2.set(mensajeError(err, 'No se pudo cargar la rúbrica del estudiante.')),
+    });
+  }
+
+  descargar(entrega: Entrega): void {
+    this.errorEntregas.set('');
+    this.servicio.descargarEntrega(entrega.id).subscribe({
+      next: (blob) => guardarBlob(blob, entrega.nombre),
+      error: (err) => this.errorEntregas.set(mensajeError(err, 'No se pudo descargar el archivo.')),
     });
   }
 

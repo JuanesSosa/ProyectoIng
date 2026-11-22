@@ -68,7 +68,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/grupos/*/actividades").hasRole("DOCENTE")
                         .requestMatchers(HttpMethod.PUT, "/api/actividades/**").hasRole("DOCENTE")
                         .requestMatchers(HttpMethod.DELETE, "/api/actividades/*").hasRole("DOCENTE")
-                        .requestMatchers(HttpMethod.POST, "/api/grupos/*/informe/enviar").hasRole("DOCENTE")
+                        // Entregas de archivos: sube y borra solo el ESTUDIANTE (descargar/listar: ver GET arriba y
+                        // anyRequest; el servicio limita a su dueño, al docente del grupo y al administrador)
+                        .requestMatchers(HttpMethod.POST, "/api/actividades/*/entregas").hasRole("ESTUDIANTE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/entregas/*").hasRole("ESTUDIANTE")
+                        // Enviar notas por correo: solo el DOCENTE del grupo
+                        .requestMatchers(HttpMethod.POST, "/api/grupos/*/correos").hasRole("DOCENTE")
                         // Panel con totales
                         .requestMatchers("/api/panel").hasAnyRole("ADMIN", "DOCENTE")
                         .anyRequest().authenticated()

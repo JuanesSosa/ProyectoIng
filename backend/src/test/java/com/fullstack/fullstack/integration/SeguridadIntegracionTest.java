@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -18,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -163,9 +165,13 @@ class SeguridadIntegracionTest {
     @Test
     void elAdministradorCreaEstudianteYUnDocumentoRepetidoDa409() throws Exception {
         String token = admin();
-        String cuerpo = "{\"documento\":\"555111\",\"nombre\":\"Laura\",\"curso\":\"10A\"}";
-        mvc.perform(post("/api/estudiantes").header("Authorization", bearer(token)).contentType(JSON).content(cuerpo))
-                .andExpect(status().isCreated());
+        String cuerpo = "{\"documento\":\"555111\",\"codigo\":\"2220249001\",\"nombre\":\"Laura\","
+                + "\"correo\":\"laura@gestor.com\",\"curso\":\"10A\"}";
+        String creado = mvc.perform(post("/api/estudiantes").header("Authorization", bearer(token))
+                        .contentType(JSON).content(cuerpo))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(creado.contains("2220249001") && creado.contains("laura@gestor.com"), creado);
         mvc.perform(post("/api/estudiantes").header("Authorization", bearer(token)).contentType(JSON).content(cuerpo))
                 .andExpect(status().isConflict());
     }
@@ -331,6 +337,91 @@ class SeguridadIntegracionTest {
                 .andExpect(status().isNoContent());
         mvc.perform(delete("/api/grupos/" + grupoId).header("Authorization", bearer(token)))
                 .andExpect(status().isNoContent());
+    }
+
+    // ---------- código y correo del estudiante ----------
+
+    @Test
+    void elCorreoYElCodigoDelEstudianteAparecenEnLasListasDelDocente() throws Exception {
+        String token = docente();
+        String grupo = grupoSoftware1(token);
+        String matriculados = leer("/api/grupos/" + grupo + "/estudiantes", token);
+        assertTrue(matriculados.contains("2220242001") && matriculados.contains("juan.perez@gestor.com"), matriculados);
+        String actividad = actividadId(grupo, "Parcial 1", token);
+        String notas = leer("/api/actividades/" + actividad + "/estudiantes", token);
+        assertTrue(notas.contains("2220242001") && notas.contains("juan.perez@gestor.com"), notas);
+    }
+
+    // ---------- entregas (archivos) ----------
+
+    private MockMultipartFile archivo(String nombre, String contenido) {
+        return new MockMultipartFile("archivo", nombre, "application/octet-stream", contenido.getBytes());
+    }
+
+    @Test
+    void elEstudianteSubeUnaEntregaYElDocenteLaDescarga() throws Exception {
+        String docente = docente();
+        String grupo = grupoSoftware1(docente);
+        String actividad = actividadId(grupo, "Proyecto", docente);
+        String juanId = estudianteId(grupo, "Juan Pérez", docente);
+        String alumno = juan();
+
+        String creada = mvc.perform(multipart("/api/actividades/" + actividad + "/entregas")
+                        .file(archivo("informe.txt", "contenido de prueba")).header("Authorization", bearer(alumno)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String entregaId = extraer(creada, "\"id\"\\s*:\\s*(\\d+)");
+        assertTrue(creada.contains("informe.txt"), creada);
+
+        String propias = leer("/api/actividades/" + actividad + "/entregas", alumno);
+        assertTrue(propias.contains("informe.txt"), propias);
+        String vistaDocente = leer("/api/actividades/" + actividad + "/entregas?estudianteId=" + juanId, docente);
+        assertTrue(vistaDocente.contains("informe.txt"), vistaDocente);
+
+        String descargado = mvc.perform(get("/api/entregas/" + entregaId + "/descargar")
+                        .header("Authorization", bearer(docente)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertTrue(descargado.equals("contenido de prueba"), descargado);
+        mvc.perform(get("/api/entregas/" + entregaId + "/descargar").header("Authorization", bearer(admin())))
+                .andExpect(status().isOk());
+
+        mvc.perform(delete("/api/entregas/" + entregaId).header("Authorization", bearer(docente)))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/entregas/" + entregaId).header("Authorization", bearer(alumno)))
+                .andExpect(status().isNoContent());
+        assertFalse(leer("/api/actividades/" + actividad + "/entregas", alumno).contains("informe.txt"));
+    }
+
+    @Test
+    void soloElEstudianteSubeEntregasYSoloSeAceptanTiposPermitidos() throws Exception {
+        String docente = docente();
+        String grupo = grupoSoftware1(docente);
+        String actividad = actividadId(grupo, "Proyecto", docente);
+
+        mvc.perform(multipart("/api/actividades/" + actividad + "/entregas")
+                        .file(archivo("informe.txt", "x")).header("Authorization", bearer(docente)))
+                .andExpect(status().isForbidden());
+        mvc.perform(multipart("/api/actividades/" + actividad + "/entregas")
+                        .file(archivo("virus.exe", "x")).header("Authorization", bearer(juan())))
+                .andExpect(status().isBadRequest());
+        mvc.perform(multipart("/api/actividades/" + actividad + "/entregas").file(archivo("a.txt", "x")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ---------- envío de notas por correo ----------
+
+    @Test
+    void elEnvioDeCorreosSoloLoHaceElDocenteYSinSmtpDaUnMensajeClaro() throws Exception {
+        String docente = docente();
+        String grupo = grupoSoftware1(docente);
+        // En las pruebas no hay servidor SMTP configurado: 400 con explicación (no 500)
+        mvc.perform(post("/api/grupos/" + grupo + "/correos").header("Authorization", bearer(docente)))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/grupos/" + grupo + "/correos").header("Authorization", bearer(admin())))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/grupos/" + grupo + "/correos").header("Authorization", bearer(juan())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

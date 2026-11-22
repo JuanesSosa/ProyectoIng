@@ -77,8 +77,9 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        completarDatosDeEjemplo();
         if (usuarioRepository.count() == 0) {
-            Estudiante juan = estudiante("123456", "Juan Pérez", "10A");
+            Estudiante juan = estudiante("123456", "2220242001", "Juan Pérez", "juan.perez@gestor.com", "10A");
             usuarioRepository.save(usuario("Administrador", "admin@gestor.com", "Admin123*", Rol.ADMIN, null));
             usuarioRepository.save(usuario("Docente de prueba", CORREO_DOCENTE, "Docente123*", Rol.DOCENTE, null));
             usuarioRepository.save(usuario("Juan Pérez", "juan.perez@gestor.com", "Estudiante123*", Rol.ESTUDIANTE, juan));
@@ -98,9 +99,9 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
         Usuario profe = docente.get();
-        Estudiante juan = estudiante("123456", "Juan Pérez", "10A");
-        Estudiante ana = estudiante("456789", "Ana López", "10B");
-        Estudiante pedro = estudiante("987654", "Pedro Gómez", "11A");
+        Estudiante juan = estudiante("123456", "2220242001", "Juan Pérez", "juan.perez@gestor.com", "10A");
+        Estudiante ana = estudiante("456789", "2220242002", "Ana López", "ana.lopez@gestor.com", "10B");
+        Estudiante pedro = estudiante("987654", "2220242003", "Pedro Gómez", "pedro.gomez@gestor.com", "11A");
 
         Asignatura software = asignatura("ISW101", "Ingeniería de Software");
         Asignatura discretas = asignatura("MDI101", "Matemáticas Discretas");
@@ -145,9 +146,37 @@ public class DataSeeder implements CommandLineRunner {
         log.info("Ejemplo académico cargado (periodo {}).", PERIODO);
     }
 
-    private Estudiante estudiante(String documento, String nombre, String curso) {
+    /**
+     * Si una base creada con una versión anterior ya tiene los estudiantes de ejemplo sin código ni correo,
+     * se los completa (solo a esos tres y solo si están vacíos).
+     */
+    private void completarDatosDeEjemplo() {
+        completar("123456", "2220242001", "juan.perez@gestor.com");
+        completar("456789", "2220242002", "ana.lopez@gestor.com");
+        completar("987654", "2220242003", "pedro.gomez@gestor.com");
+    }
+
+    private void completar(String documento, String codigo, String correo) {
+        estudianteRepository.findByDocumento(documento).ifPresent(e -> {
+            boolean cambio = false;
+            if (e.getCodigo() == null && !estudianteRepository.existsByCodigoIgnoreCase(codigo)) {
+                e.setCodigo(codigo);
+                cambio = true;
+            }
+            if (e.getCorreo() == null) {
+                e.setCorreo(correo);
+                cambio = true;
+            }
+            if (cambio) {
+                estudianteRepository.save(e);
+            }
+        });
+    }
+
+    private Estudiante estudiante(String documento, String codigo, String nombre, String correo, String curso) {
         return estudianteRepository.findByDocumento(documento).orElseGet(() -> estudianteRepository.save(
-                Estudiante.builder().documento(documento).nombre(nombre).curso(curso).build()));
+                Estudiante.builder().documento(documento).codigo(codigo).nombre(nombre).correo(correo)
+                        .curso(curso).build()));
     }
 
     private Asignatura asignatura(String codigo, String nombre) {

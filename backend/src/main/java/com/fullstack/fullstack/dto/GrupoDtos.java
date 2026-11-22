@@ -41,10 +41,12 @@ public final class GrupoDtos {
     }
 
     /** Estudiante matriculado en un grupo. */
-    public record MatriculadoResponse(Long estudianteId, String documento, String nombre, String curso) {
+    public record MatriculadoResponse(Long estudianteId, String documento, String codigo, String nombre,
+                                      String correo, String curso) {
 
         public static MatriculadoResponse from(Estudiante e) {
-            return new MatriculadoResponse(e.getId(), e.getDocumento(), e.getNombre(), e.getCurso());
+            return new MatriculadoResponse(e.getId(), e.getDocumento(), e.getCodigo(), e.getNombre(), e.getCorreo(),
+                    e.getCurso());
         }
     }
 
