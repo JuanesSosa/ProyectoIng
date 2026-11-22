@@ -80,6 +80,14 @@ import { GrupoService } from '../../services/grupo.service';
       <div class="tarjeta">
         <h2>Progreso de los estudiantes</h2>
         <p class="suave">Acumulado = puntos ganados sobre 5.0 (lo no calificado cuenta 0). Promedio = nota de lo evaluado hasta ahora.</p>
+                @if (puedeEditar) {
+          <p>
+            <button type="button" class="btn btn-pequeno" [disabled]="enviando()" (click)="enviarInforme()">
+              {{ enviando() ? 'Enviando…' : 'Enviar informe por correo' }}
+            </button>
+          </p>
+          @if (mensajeEnvio()) { <p role="status">{{ mensajeEnvio() }}</p> }
+        }
         <div class="scroll">
           <table>
             <thead>
@@ -131,6 +139,8 @@ export class GrupoActividadesComponent implements OnInit {
   readonly error = signal('');
   readonly errorForm = signal('');
   readonly formAbierto = signal(false);
+  readonly enviando = signal(false);
+  readonly mensajeEnvio = signal('');
   readonly editandoId = signal<number | null>(null);
   form: { nombre: string; peso: number | null } = { nombre: '', peso: null };
   private grupoId = 0;
@@ -194,6 +204,26 @@ export class GrupoActividadesComponent implements OnInit {
     this.actividadService.eliminar(a.id).subscribe({
       next: () => this.cargar(),
       error: (err) => this.error.set(mensajeError(err, 'No se pudo eliminar la actividad.')),
+    });
+  }
+    enviarInforme(): void {
+    if (!confirm('¿Enviar el informe de notas por correo a los estudiantes de este grupo?')) {
+      return;
+    }
+    this.enviando.set(true);
+    this.mensajeEnvio.set('');
+    this.error.set('');
+    this.grupos.enviarInforme(this.grupoId).subscribe({
+      next: (r) => {
+        this.enviando.set(false);
+        this.mensajeEnvio.set(
+          `Informe enviado a ${r.enviados} estudiante(s). Sin usuario vinculado: ${r.sinCorreo}. Con error de envío: ${r.fallidos}.`,
+        );
+      },
+      error: (err) => {
+        this.enviando.set(false);
+        this.error.set(mensajeError(err, 'No se pudo enviar el informe.'));
+      },
     });
   }
 }

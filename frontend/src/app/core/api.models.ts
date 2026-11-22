@@ -139,3 +139,9 @@ export interface Panel {
   grupos: number;
   calificaciones: number;
 }
+/** Resultado de enviar el informe de notas por correo. */
+export interface EnvioInforme {
+  enviados: number;
+  sinCorreo: number;
+  fallidos: number;
+}
