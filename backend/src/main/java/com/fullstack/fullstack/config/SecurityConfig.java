@@ -68,6 +68,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/grupos/*/actividades").hasRole("DOCENTE")
                         .requestMatchers(HttpMethod.PUT, "/api/actividades/**").hasRole("DOCENTE")
                         .requestMatchers(HttpMethod.DELETE, "/api/actividades/*").hasRole("DOCENTE")
+                        .requestMatchers(HttpMethod.POST, "/api/grupos/*/informe/enviar").hasRole("DOCENTE")
                         // Panel con totales
                         .requestMatchers("/api/panel").hasAnyRole("ADMIN", "DOCENTE")
                         .anyRequest().authenticated()
