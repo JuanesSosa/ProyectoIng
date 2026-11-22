@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
     /** 413: el archivo supera el tamaño máximo permitido. */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> handleArchivoGrande(MaxUploadSizeExceededException ex) {
-        return build(HttpStatus.PAYLOAD_TOO_LARGE, "El archivo supera el tamaño máximo permitido (10 MB)", null);
+        return build(HttpStatus.CONTENT_TOO_LARGE, "El archivo supera el tamaño máximo permitido (10 MB)", null);
     }
 
     /** 400: falló la validación (@Valid) del cuerpo. Devuelve los errores por campo en "errors". */

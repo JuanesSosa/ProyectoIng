@@ -19,16 +19,17 @@ import { UsuarioService } from '../../services/usuario.service';
     </div>
 
     @if (formAbierto()) {
-      <form class="tarjeta" (ngSubmit)="guardar()" #f="ngForm">
+      <form class="tarjeta" (ngSubmit)="guardar()" novalidate>
         <h2>{{ editandoId() === null ? 'Nuevo usuario' : 'Editar usuario' }}</h2>
         <div class="fila">
           <div class="campo"><label for="nom">Nombre</label>
-            <input id="nom" name="nombre" [(ngModel)]="form.nombre" required maxlength="120" /></div>
+            <input id="nom" name="nombre" [(ngModel)]="form.nombre" maxlength="120" /></div>
           <div class="campo"><label for="cor">Correo</label>
-            <input id="cor" name="correo" type="email" [(ngModel)]="form.correo" required /></div>
+            <input id="cor" name="correo" type="email" [(ngModel)]="form.correo" /></div>
           <div class="campo"><label for="pwd">Contraseña {{ editandoId() !== null ? '(vacía = no cambiar)' : '' }}</label>
             <input id="pwd" name="password" type="password" [(ngModel)]="form.password"
-                   [required]="editandoId() === null" minlength="8" maxlength="64" autocomplete="new-password" /></div>
+                   maxlength="64" autocomplete="new-password" />
+            <span class="suave" style="font-size: 0.8rem">Mínimo 8 caracteres</span></div>
         </div>
         <div class="fila" style="margin-top: 0.75rem">
           <div class="campo"><label for="rol">Rol</label>
@@ -39,10 +40,10 @@ import { UsuarioService } from '../../services/usuario.service';
             </select></div>
           @if (form.rol === 'ESTUDIANTE') {
             <div class="campo"><label for="est">Estudiante vinculado</label>
-              <select id="est" name="estudianteId" [(ngModel)]="form.estudianteId" required>
+              <select id="est" name="estudianteId" [(ngModel)]="form.estudianteId">
                 <option [ngValue]="null">— Selecciona —</option>
                 @for (e of estudiantes(); track e.id) {
-                  <option [ngValue]="e.id">{{ e.nombre }} ({{ e.documento }})</option>
+                  <option [ngValue]="e.id">{{ e.nombre }} · {{ e.codigo ?? e.documento }}</option>
                 }
               </select></div>
           }
@@ -56,7 +57,7 @@ import { UsuarioService } from '../../services/usuario.service';
         </div>
         @if (errorForm()) { <p class="error" role="alert">{{ errorForm() }}</p> }
         <div class="fila" style="margin-top: 1rem">
-          <button class="btn" type="submit" [disabled]="f.invalid">Guardar</button>
+          <button class="btn" type="submit">Guardar</button>
           <button class="btn btn-secundario" type="button" (click)="cerrar()">Cancelar</button>
         </div>
       </form>
@@ -136,6 +137,12 @@ export class UsuariosComponent implements OnInit {
   }
 
   guardar(): void {
+    const problema = validarUsuario(this.form, this.editandoId() === null);
+    if (problema) {
+      this.errorForm.set(problema);
+      return;
+    }
+    this.errorForm.set('');
     const datos: UsuarioRequest = {
       ...this.form,
       password: this.form.password ? this.form.password : undefined,
@@ -158,4 +165,25 @@ export class UsuariosComponent implements OnInit {
       error: (err) => this.error.set(mensajeError(err, 'No se pudo desactivar el usuario.')),
     });
   }
+}
+
+/** Valida el formulario antes de enviarlo y devuelve el primer problema (o '' si está bien). */
+export function validarUsuario(form: UsuarioRequest, esNuevo: boolean): string {
+  if (!form.nombre.trim()) {
+    return 'El nombre es obligatorio.';
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) {
+    return 'Escribe un correo válido.';
+  }
+  const clave = form.password ?? '';
+  if (esNuevo && clave.length === 0) {
+    return 'La contraseña es obligatoria.';
+  }
+  if (clave.length > 0 && clave.length < 8) {
+    return 'La contraseña debe tener al menos 8 caracteres.';
+  }
+  if (form.rol === 'ESTUDIANTE' && form.estudianteId === null) {
+    return 'Selecciona el estudiante vinculado.';
+  }
+  return '';
 }
