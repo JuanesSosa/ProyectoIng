@@ -1,9 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { concat, last } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { Actividad, Entrega, EstudianteActividad } from '../../core/api.models';
 import { formatoTamano, guardarBlob } from '../../core/archivos';
+import { descargarExcel, filasPlantilla, interpretarPlantilla, leerExcel, nombreArchivo } from '../../core/excel';
 import { mensajeError } from '../../core/errores';
 import { NOTA_MINIMA_APROBATORIA, avanceRubrica, calcularPromedio } from '../../core/promedio';
 import { ActividadService } from '../../services/actividad.service';
@@ -80,6 +82,30 @@ export function validarRubrica(filas: FilaCriterio[]): string {
       <h1>{{ a.nombre }} <span class="suave">({{ a.peso }}% de la nota final)</span></h1>
     }
     @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+
+    @if (puedeEditar && actividad(); as a) {
+      <div class="tarjeta">
+        <h2>Notas con Excel</h2>
+        <p class="suave">Descarga la plantilla (un renglón por estudiante y una columna por criterio), llena las notas de 0.0 a 5.0 y súbela. Las celdas vacías no cambian la nota actual.</p>
+        @if (a.criterios.length === 0) {
+          <p class="suave">Define primero la rúbrica para poder usar la plantilla.</p>
+        } @else {
+          <div class="fila" style="align-items: center">
+            <button type="button" class="btn btn-secundario" (click)="descargarPlantilla()">Descargar plantilla</button>
+            <input type="file" id="excel" accept=".xlsx" aria-label="Plantilla de Excel con notas" [disabled]="importando()"
+                   (change)="importar($event)" />
+            @if (importando()) { <span class="suave">Importando…</span> }
+          </div>
+        }
+        @if (mensajeExcel()) { <p class="ok" role="status">{{ mensajeExcel() }}</p> }
+        @if (erroresExcel().length > 0) {
+          <div class="error" role="alert">
+            <p>No se importó nada. Corrige estos problemas y vuelve a subir el archivo:</p>
+            <ul>@for (e of erroresExcel(); track e) { <li>{{ e }}</li> }</ul>
+          </div>
+        }
+      </div>
+    }
 
     <div class="tarjeta">
       <div class="campo" style="max-width: 420px">
@@ -225,6 +251,10 @@ export class ActividadRubricaComponent implements OnInit {
   readonly seleccionado = computed(() => this.estudiantes().find((e) => e.estudianteId === this.estudianteId()) ?? null);
   protected readonly tamano = formatoTamano;
 
+  readonly importando = signal(false);
+  readonly mensajeExcel = signal('');
+  readonly erroresExcel = signal<string[]>([]);
+
   readonly editandoRubrica = signal(false);
   readonly criterios = signal<FilaCriterio[]>([]);
   readonly errorRubrica = signal('');
@@ -295,6 +325,66 @@ export class ActividadRubricaComponent implements OnInit {
       next: (blob) => guardarBlob(blob, entrega.nombre),
       error: (err) => this.errorEntregas.set(mensajeError(err, 'No se pudo descargar el archivo.')),
     });
+  }
+
+  // ---------- Excel (docente) ----------
+
+  descargarPlantilla(): void {
+    const a = this.actividad();
+    if (!a) {
+      return;
+    }
+    this.mensajeExcel.set('');
+    this.erroresExcel.set([]);
+    descargarExcel(nombreArchivo('plantilla', a.nombre), [
+      { nombre: 'Notas', filas: filasPlantilla(a.criterios, this.estudiantes()) },
+    ]).catch(() => this.erroresExcel.set(['No se pudo generar la plantilla de Excel.']));
+  }
+
+  async importar(evento: Event): Promise<void> {
+    const input = evento.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    const a = this.actividad();
+    if (!archivo || !a) {
+      return;
+    }
+    this.mensajeExcel.set('');
+    this.erroresExcel.set([]);
+    let resultado;
+    try {
+      resultado = interpretarPlantilla(await leerExcel(archivo), a.criterios, this.estudiantes());
+    } catch {
+      this.erroresExcel.set(['No se pudo leer el archivo. Debe ser un Excel (.xlsx) generado con la plantilla.']);
+      input.value = '';
+      return;
+    }
+    if (resultado.errores.length > 0) {
+      this.erroresExcel.set(resultado.errores);
+      input.value = '';
+      return;
+    }
+    if (!confirm(`¿Importar las notas de ${resultado.notas.length} estudiante(s)? Se reemplazan las notas de los criterios que tengan valor.`)) {
+      input.value = '';
+      return;
+    }
+    this.importando.set(true);
+    concat(...resultado.notas.map((n) => this.servicio.calificar(this.actividadId, n.estudianteId, n.calificaciones)))
+      .pipe(last())
+      .subscribe({
+        next: () => {
+          this.importando.set(false);
+          input.value = '';
+          this.mensajeExcel.set(`Notas importadas para ${resultado.notas.length} estudiante(s).`);
+          this.cargarEstudiantes();
+          this.elegir(this.estudianteId());
+        },
+        error: (err) => {
+          this.importando.set(false);
+          input.value = '';
+          this.erroresExcel.set([mensajeError(err, 'No se pudieron importar las notas. Algunas pudieron guardarse: revisa la lista.')]);
+          this.cargarEstudiantes();
+        },
+      });
   }
 
   guardar(): void {

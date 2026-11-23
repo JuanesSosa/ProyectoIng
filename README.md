@@ -23,6 +23,7 @@ Aplicación web para registrar y consultar calificaciones. Spring Boot 4 (Java 2
 - Notas de 0.0 a 5.0 (máx. 2 decimales); se muestran en rojo si son menores que 3.0.
 - Los porcentajes de las actividades de un grupo suman como máximo 100; los de los criterios de una rúbrica también. Los nombres no se repiten.
 - Cada estudiante tiene documento, **código** y **correo** (documento y código únicos; se ven junto al nombre en las listas). Los estudiantes antiguos sin código/correo se completan al editarlos.
+- Excel: el docente/admin exporta las notas del grupo (hoja *Notas* y hoja *Detalle* por criterio) desde la pantalla del grupo; el docente descarga una plantilla por actividad (estudiantes × criterios), la llena y la importa (se busca al estudiante por documento o código; celdas vacías no cambian la nota; si hay un error no se importa nada). Se genera en el navegador con ExcelJS.
 - Entregas: hasta 5 archivos por estudiante y actividad, máx. 10 MB cada uno (pdf, doc, docx, ppt, pptx, xls, xlsx, txt, zip, png, jpg, jpeg). Solo el estudiante matriculado sube y borra; descargan el dueño, el docente del grupo y el administrador.
 - Documento de estudiante y código de asignatura únicos; un estudiante no se repite en un grupo.
 - Usuarios y asignaturas se **desactivan**, no se borran. No se elimina un estudiante matriculado, ni un grupo con estudiantes o actividades, ni una actividad o criterio con calificaciones.

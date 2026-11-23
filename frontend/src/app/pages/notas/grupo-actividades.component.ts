@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { Actividad, EnvioCorreos, Grupo, ResumenGrupo } from '../../core/api.models';
+import { descargarExcel, hojasNotasGrupo, nombreArchivo } from '../../core/excel';
 import { mensajeError } from '../../core/errores';
 import { NOTA_MINIMA_APROBATORIA } from '../../core/promedio';
 import { ActividadService } from '../../services/actividad.service';
@@ -80,12 +81,14 @@ import { GrupoService } from '../../services/grupo.service';
       <div class="tarjeta">
         <div class="cabecera">
           <h2>Progreso de los estudiantes</h2>
+          <button type="button" class="btn btn-secundario btn-pequeno" (click)="exportar()">Exportar a Excel</button>
           @if (puedeEditar) {
             <button type="button" class="btn btn-pequeno" [disabled]="enviando()" (click)="enviarCorreos()">
               {{ enviando() ? 'Enviando…' : 'Enviar notas por correo a todo el grupo' }}
             </button>
           }
         </div>
+        @if (errorExcel()) { <p class="error" role="alert">{{ errorExcel() }}</p> }
         @if (errorCorreo()) { <p class="error" role="alert">{{ errorCorreo() }}</p> }
         @if (resultadoCorreo(); as r) {
           <p class="ok" role="status">
@@ -157,6 +160,7 @@ export class GrupoActividadesComponent implements OnInit {
   readonly actividades = signal<Actividad[]>([]);
   readonly progreso = signal<ResumenGrupo[]>([]);
   readonly error = signal('');
+  readonly errorExcel = signal('');
   readonly errorCorreo = signal('');
   readonly resultadoCorreo = signal<EnvioCorreos | null>(null);
   readonly enviando = signal(false);
@@ -188,6 +192,16 @@ export class GrupoActividadesComponent implements OnInit {
       next: (lista) => this.progreso.set(lista),
       error: () => this.progreso.set([]),
     });
+  }
+
+  /** Descarga las notas del grupo en un Excel (hoja Notas y hoja Detalle por criterio). */
+  exportar(): void {
+    this.errorExcel.set('');
+    const g = this.grupo();
+    const archivo = nombreArchivo(g?.asignaturaNombre ?? 'notas', g?.nombre ?? '', g?.periodo ?? '');
+    descargarExcel(archivo, hojasNotasGrupo(this.progreso())).catch(() =>
+      this.errorExcel.set('No se pudo generar el archivo de Excel.'),
+    );
   }
 
   /** Envía las notas por correo a todo el grupo o, con estudianteId, a un solo estudiante. */
