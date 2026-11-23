@@ -30,6 +30,19 @@ import { AuthService } from '../core/auth.service';
             <a routerLink="/usuarios" routerLinkActive="activo">Usuarios</a>
           }
         </nav>
+        <div class="preferencias">
+          <span class="preferencias-titulo">Apariencia</span>
+          <button
+            type="button"
+            class="btn btn-secundario btn-tema"
+            (click)="alternarTema()"
+            [attr.aria-label]="temaOscuro ? 'Activar modo claro' : 'Activar modo oscuro'"
+            [attr.aria-pressed]="temaOscuro"
+          >
+            <span aria-hidden="true">{{ temaOscuro ? '☀️' : '🌙' }}</span>
+            {{ temaOscuro ? 'Modo claro' : 'Modo oscuro' }}
+          </button>
+        </div>
         <div class="usuario">
           <strong>{{ auth.sesion()?.nombre }}</strong>
           <span class="rol">{{ auth.sesion()?.rol }}</span>
@@ -81,6 +94,25 @@ import { AuthService } from '../core/auth.service';
         background: var(--color-primario);
         color: #fff;
       }
+      .preferencias {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+      .preferencias-titulo {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .btn-tema {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+      }
       .usuario {
         display: flex;
         flex-direction: column;
@@ -116,4 +148,23 @@ import { AuthService } from '../core/auth.service';
 })
 export class ShellComponent {
   protected readonly auth = inject(AuthService);
+  protected temaOscuro = this.obtenerTemaGuardado();
+
+  constructor() {
+    this.aplicarTema();
+  }
+
+  protected alternarTema(): void {
+    this.temaOscuro = !this.temaOscuro;
+    this.aplicarTema();
+    localStorage.setItem('gestor-notas-tema', this.temaOscuro ? 'oscuro' : 'claro');
+  }
+
+  private obtenerTemaGuardado(): boolean {
+    return localStorage.getItem('gestor-notas-tema') === 'oscuro';
+  }
+
+  private aplicarTema(): void {
+    document.documentElement.setAttribute('data-theme', this.temaOscuro ? 'dark' : 'light');
+  }
 }
