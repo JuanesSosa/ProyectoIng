@@ -338,7 +338,11 @@ export class ActividadRubricaComponent implements OnInit {
     this.erroresExcel.set([]);
     descargarExcel(nombreArchivo('plantilla', a.nombre), [
       { nombre: 'Notas', filas: filasPlantilla(a.criterios, this.estudiantes()) },
-    ]).catch(() => this.erroresExcel.set(['No se pudo generar la plantilla de Excel.']));
+    ]).catch((e) =>
+      this.erroresExcel.set([
+        `No se pudo generar la plantilla de Excel. Detalle técnico: ${e instanceof Error ? e.message : String(e)}`,
+      ]),
+    );
   }
 
   async importar(evento: Event): Promise<void> {
@@ -353,8 +357,12 @@ export class ActividadRubricaComponent implements OnInit {
     let resultado;
     try {
       resultado = interpretarPlantilla(await leerExcel(archivo), a.criterios, this.estudiantes());
-    } catch {
-      this.erroresExcel.set(['No se pudo leer el archivo. Debe ser un Excel (.xlsx) generado con la plantilla.']);
+    } catch (e) {
+      const detalle = e instanceof Error ? e.message : String(e);
+      this.erroresExcel.set([
+        'No se pudo leer el archivo. Debe ser un Excel (.xlsx) generado con la plantilla, guardado y cerrado en Excel ' +
+          `(si está abierto en Excel, ciérralo y vuelve a subirlo). Detalle técnico: ${detalle}`,
+      ]);
       input.value = '';
       return;
     }

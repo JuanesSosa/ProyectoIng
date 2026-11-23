@@ -170,8 +170,17 @@ export function nombreArchivo(...partes: string[]): string {
 
 // ---------- Leer y escribir archivos .xlsx (ExcelJS se carga solo cuando se usa) ----------
 
+/**
+ * Carga ExcelJS solo cuando se necesita. ExcelJS es CommonJS: según el modo de compilación (desarrollo o
+ * producción) el constructor llega en el módulo o dentro de `default`, así que se aceptan ambos.
+ */
+async function cargarExcelJS(): Promise<typeof import('exceljs')> {
+  const modulo = (await import('exceljs')) as unknown as { default?: typeof import('exceljs') } & typeof import('exceljs');
+  return modulo.Workbook ? modulo : (modulo.default as typeof import('exceljs'));
+}
+
 export async function descargarExcel(archivo: string, hojas: Hoja[]): Promise<void> {
-  const ExcelJS = await import('exceljs');
+  const ExcelJS = await cargarExcelJS();
   const libro = new ExcelJS.Workbook();
   for (const hoja of hojas) {
     const ws = libro.addWorksheet(hoja.nombre);
@@ -217,7 +226,7 @@ function valorCelda(valor: unknown): Celda {
 
 /** Lee la primera hoja de un .xlsx como filas de celdas. */
 export async function leerExcel(archivo: File): Promise<Celda[][]> {
-  const ExcelJS = await import('exceljs');
+  const ExcelJS = await cargarExcelJS();
   const libro = new ExcelJS.Workbook();
   await libro.xlsx.load(await archivo.arrayBuffer());
   const hoja = libro.worksheets[0];

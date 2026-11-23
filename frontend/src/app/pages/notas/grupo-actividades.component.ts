@@ -199,8 +199,10 @@ export class GrupoActividadesComponent implements OnInit {
     this.errorExcel.set('');
     const g = this.grupo();
     const archivo = nombreArchivo(g?.asignaturaNombre ?? 'notas', g?.nombre ?? '', g?.periodo ?? '');
-    descargarExcel(archivo, hojasNotasGrupo(this.progreso())).catch(() =>
-      this.errorExcel.set('No se pudo generar el archivo de Excel.'),
+    descargarExcel(archivo, hojasNotasGrupo(this.progreso())).catch((e) =>
+      this.errorExcel.set(
+        `No se pudo generar el archivo de Excel. Detalle técnico: ${e instanceof Error ? e.message : String(e)}`,
+      ),
     );
   }
 
